@@ -172,7 +172,15 @@ const MID_RANGE_TOKENS_QUERY = `{
               "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9Ct",
               "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
               "USDH1SM1ojwWUga67PGrgFWUHibbjqMvuMaDkRJTgkX",
-              "BXXkv6z8ykpG1yuvUDPgh732wzVHB69RnB9YgSYh3itW"
+              "BXXkv6z8ykpG1yuvUDPgh732wzVHB69RnB9YgSYh3itW",
+              "SENBBKVCM7homnf5RX9zqpf1GFe935hnbU4uVzY1Y6M",
+              "5tB5D6DGJMxxHYmNkfJNG237x6pZGEwTzGpUUh62yQJ7",
+              "XBGdqJ9P175hCC1LangCEyXWNeCPHaKWA17tymz2PrY",
+              "3dQTr7ror2QPKQ3GbBCokJUmjErGg8kTJzdnYjNfvi3Z",
+              "RLBxxFkseAZ4RgJH3Sqn8jXxhmGoz9jWxDNJMh8pL7a",
+              "octo82drBEdm8CSDaEKBymVn86TBtgmPnDdmE64PTqJ",
+              "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1",
+              "3dgCCb15HMQSA4Pn3Tfii5vRk7aRqTH95LJjxzsG2Mug"
             ]}
             Fungible: true
           }
