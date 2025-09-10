@@ -170,7 +170,7 @@ function formatPrice(price) {
     return price.toFixed(4);
 }
 
-function createCoin360Tile(token, index, maxMarketCap) {
+function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') {
     const tile = document.createElement('div');
     tile.className = 'coin360-tile';
     
@@ -187,6 +187,19 @@ function createCoin360Tile(token, index, maxMarketCap) {
     if (index < 3) {
         colSpan = Math.max(colSpan, 3);
         rowSpan = Math.max(rowSpan, 2);
+    }
+    
+    // Apply scaling for mid-range filter to reduce overall box sizes
+    if (marketCapFilter === 'mid-range') {
+        const midRangeScale = 0.6; // Scale down by 40%
+        colSpan = Math.max(baseSpan, Math.ceil(colSpan * midRangeScale));
+        rowSpan = Math.max(baseSpan, Math.ceil(rowSpan * midRangeScale));
+        
+        // Ensure top 3 tokens remain prominent but scaled
+        if (index < 3) {
+            colSpan = Math.max(colSpan, 2);
+            rowSpan = Math.max(rowSpan, 1);
+        }
     }
     
     // Color based on real price change
@@ -504,7 +517,7 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
             
             // Create Coin360-style tiles
             tokens.forEach((token, index) => {
-                const tile = createCoin360Tile(token, index, maxMarketCap);
+                const tile = createCoin360Tile(token, index, maxMarketCap, marketCapFilter);
                 tokensGrid.appendChild(tile);
             });
             
