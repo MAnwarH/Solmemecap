@@ -144,14 +144,15 @@ async function fetchTokens(marketCapFilter = 'all') {
                 buyers: Math.floor(Math.random() * 800) + 100, // Still estimated
                 sellers: Math.floor(Math.random() * 300) + 50, // Still estimated
                 price: currentPrice,
-                rank: index + 1,
+                rank: index + 1, // Will be updated after sorting
                 changePercent: changePercent,
                 isPositive: isPositive,
                 hasValidChange: hasValidChange,
                 imageUrl: currency.ImageUrl || null, // Add image URL from backend
                 uri: currency.Uri || null // Keep URI for debugging if needed
             };
-        });
+        }).sort((a, b) => b.marketCap - a.marketCap) // Sort by market cap descending (highest first)
+        .map((token, index) => ({ ...token, rank: index + 1 })); // Update ranks after sorting
         
     } catch (error) {
         // Fallback to mock data if API fails
