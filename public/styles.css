@@ -538,6 +538,25 @@ body {
     line-height: 1;
 }
 
+.tile-image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 40%;
+    max-height: 40%;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0.15;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.coin360-tile:hover .tile-image {
+    opacity: 0.25;
+}
+
 @keyframes tileSlideIn {
     from {
         opacity: 0;
@@ -787,6 +806,16 @@ body {
         padding: 4px;
     }
     
+    .tile-image {
+        max-width: 35%;
+        max-height: 35%;
+        opacity: 0.12;
+    }
+    
+    .coin360-tile:hover .tile-image {
+        opacity: 0.2;
+    }
+    
     .tile-symbol {
         font-size: 0.9rem !important;
         min-height: 16px;
@@ -939,6 +968,16 @@ body {
     /* Coin360 tile adjustments for very small screens */
     .tile-content {
         padding: 2px;
+    }
+    
+    .tile-image {
+        max-width: 30%;
+        max-height: 30%;
+        opacity: 0.1;
+    }
+    
+    .coin360-tile:hover .tile-image {
+        opacity: 0.18;
     }
     
     .tile-symbol {

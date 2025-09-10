@@ -147,7 +147,9 @@ async function fetchTokens(marketCapFilter = 'all') {
                 rank: index + 1,
                 changePercent: changePercent,
                 isPositive: isPositive,
-                hasValidChange: hasValidChange
+                hasValidChange: hasValidChange,
+                imageUrl: currency.ImageUrl || null, // Add image URL from backend
+                uri: currency.Uri || null // Keep URI for debugging if needed
             };
         });
         
@@ -253,8 +255,14 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
         percentageDisplay = `<span class="${token.isPositive ? 'positive' : 'negative'}">${sign}${token.changePercent.toFixed(2)}%</span>`;
     }
 
+    // Create image element with fallback
+    const imageElement = token.imageUrl ? 
+        `<img src="${token.imageUrl}" alt="${token.symbol}" class="tile-image" onerror="this.style.display='none'">` : 
+        '';
+    
     tile.innerHTML = `
         <div class="tile-rank">#${index + 1}</div>
+        ${imageElement}
         <div class="tile-content">
             <div class="tile-symbol" style="font-size: ${symbolSize}px">${token.symbol}</div>
             <div class="tile-marketcap" style="font-size: ${marketCapSize}px">$${formatNumber(token.marketCap)}</div>

@@ -15,6 +15,52 @@ app.use(express.static('public')); // Serve static files
 const BITQUERY_ENDPOINT = 'https://streaming.bitquery.io/eap';
 const API_KEY = process.env.BITQUERY_API_KEY; // Secure in .env file
 
+// Image cache to avoid refetching same URIs
+const imageCache = new Map();
+
+// Function to fetch token image from metadata URI
+async function getTokenImage(uri) {
+    try {
+        if (!uri) return null;
+        
+        // Check cache first
+        if (imageCache.has(uri)) {
+            return imageCache.get(uri);
+        }
+        
+        // Set timeout for metadata fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(uri, { 
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'Meme360-Bot/1.0'
+            }
+        });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            console.warn(`Failed to fetch metadata from ${uri}: ${response.status}`);
+            imageCache.set(uri, null);
+            return null;
+        }
+        
+        const metadata = await response.json();
+        const imageUrl = metadata.image || metadata.logo || metadata.icon || null;
+        
+        // Cache the result
+        imageCache.set(uri, imageUrl);
+        
+        return imageUrl;
+    } catch (error) {
+        console.warn(`Error fetching image from ${uri}:`, error.message);
+        // Cache null result to avoid refetching failed URIs
+        imageCache.set(uri, null);
+        return null;
+    }
+}
+
 // GraphQL query for top 100 Solana memecoins (5M+)
 const TOP_TOKENS_QUERY = `{
   Solana {
@@ -118,6 +164,11 @@ const TOP_TOKENS_QUERY = `{
           Name
           Symbol
           MintAddress
+          Decimals
+          Uri
+          Fungible
+          Native
+          TokenStandard
         }
         Marketcap: PostBalanceInUSD
       }
@@ -194,6 +245,11 @@ const MID_RANGE_TOKENS_QUERY = `{
           Name
           Symbol
           MintAddress
+          Decimals
+          Uri
+          Fungible
+          Native
+          TokenStandard
         }
         Marketcap: PostBalanceInUSD
       }
@@ -259,7 +315,49 @@ app.get('/api/tokens', async (req, res) => {
         const data = await response.json();
         console.log('✅ Successfully fetched data from BitQuery');
         
-        // Return data to frontend (no API key exposed)
+        // Process tokens to add images
+        if (data.data && data.data.Solana && data.data.Solana.TokenSupplyUpdates) {
+            console.log('🖼️ Processing token images...');
+            
+            const tokensWithImages = await Promise.all(
+                data.data.Solana.TokenSupplyUpdates.map(async (tokenData) => {
+                    try {
+                        const uri = tokenData.TokenSupplyUpdate.Currency.Uri;
+                        const imageUrl = await getTokenImage(uri);
+                        
+                        return {
+                            ...tokenData,
+                            TokenSupplyUpdate: {
+                                ...tokenData.TokenSupplyUpdate,
+                                Currency: {
+                                    ...tokenData.TokenSupplyUpdate.Currency,
+                                    ImageUrl: imageUrl // Add image URL to currency data
+                                }
+                            }
+                        };
+                    } catch (error) {
+                        console.warn(`Failed to process image for token ${tokenData.TokenSupplyUpdate.Currency.Symbol}:`, error.message);
+                        // Return original data without image on error
+                        return {
+                            ...tokenData,
+                            TokenSupplyUpdate: {
+                                ...tokenData.TokenSupplyUpdate,
+                                Currency: {
+                                    ...tokenData.TokenSupplyUpdate.Currency,
+                                    ImageUrl: null
+                                }
+                            }
+                        };
+                    }
+                })
+            );
+            
+            // Update the data structure with processed tokens
+            data.data.Solana.TokenSupplyUpdates = tokensWithImages;
+            console.log(`✅ Processed ${tokensWithImages.length} tokens with image data`);
+        }
+        
+        // Return processed data to frontend (no API key exposed)
         res.json(data);
         
     } catch (error) {
