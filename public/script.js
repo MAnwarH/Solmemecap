@@ -531,6 +531,12 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
                 tokensGrid.appendChild(tile);
             });
             
+            // Also update table view if it's currently active
+            const tokensTable = document.getElementById('tokens-table');
+            if (tokensTable && tokensTable.style.display === 'table') {
+                populateTable(tokens);
+            }
+            
             tokenCount.textContent = tokens.length;
             lastUpdated.textContent = new Date().toLocaleTimeString();
             
