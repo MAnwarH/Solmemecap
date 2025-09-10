@@ -542,19 +542,17 @@ body {
     position: absolute;
     top: 6px;
     right: 6px;
-    width: 25%;
-    height: 25%;
-    max-width: 32px;
-    max-height: 32px;
-    min-width: 16px;
-    min-height: 16px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center;
     z-index: 5;
     opacity: 1;
     transition: transform 0.2s ease;
     pointer-events: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .coin360-tile:hover .tile-image {
@@ -813,12 +811,8 @@ body {
     .tile-image {
         top: 4px;
         right: 4px;
-        width: 22%;
-        height: 22%;
-        max-width: 28px;
-        max-height: 28px;
-        min-width: 14px;
-        min-height: 14px;
+        width: 28px;
+        height: 28px;
     }
     
     .tile-symbol {
@@ -978,12 +972,8 @@ body {
     .tile-image {
         top: 3px;
         right: 3px;
-        width: 20%;
-        height: 20%;
-        max-width: 24px;
-        max-height: 24px;
-        min-width: 12px;
-        min-height: 12px;
+        width: 24px;
+        height: 24px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     
