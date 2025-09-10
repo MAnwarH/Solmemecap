@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme360 - Top Solana Memecoins</title>
+    
+    <!-- 3D Memecoin Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.svg">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <h1 class="logo-text">🚀 Meme360</h1>
+                <p class="tagline">Top 100 Solana Memecoins - Real 24h Changes</p>
+            </div>
+            <div class="stats-center">
+                <div class="stat-item">
+                    <span class="stat-label">Last Updated:</span>
+                    <span id="last-updated" class="stat-value">Loading...</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Tokens:</span>
+                    <span id="token-count" class="stat-value">-</span>
+                </div>
+            </div>
+            <div class="refresh-btn" onclick="loadTokens(false, currentMarketCapFilter)">
+                <span class="refresh-icon">🔄</span>
+                Refresh
+            </div>
+        </header>
+
+        <div class="coin360-legend">
+            <div class="legend-left">
+                <div class="legend-item">
+                    <div class="legend-color positive"></div>
+                    <span>Price Increase</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color negative"></div>
+                    <span>Price Decrease</span>
+                </div>
+            </div>
+            <div class="controls-container">
+                <div class="market-cap-filter">
+                    <select id="market-cap-dropdown" onchange="changeMarketCapFilter(this.value)">
+                        <option value="all">🚀 All Coins (5M+)</option>
+                        <option value="mid-range">💎 Mid-Range (3M-10M)</option>
+                    </select>
+                </div>
+                <div class="layout-selector">
+                    <select id="layout-dropdown" onchange="changeLayout(this.value)">
+                        <option value="box">📦 Box Layout</option>
+                        <option value="list">📋 List Table</option>
+                    </select>
+                </div>
+            </div>
+            <div class="legend-note">💡 Size = Market Cap | Color Intensity = Real 24h Price Change % | Click to view on Dexscreener</div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Fetching top 100 memecoins...</p>
+        </div>
+
+        <div class="error-message" id="error-message" style="display: none;">
+            <p>Failed to load tokens. Please try again.</p>
+        </div>
+
+        <div class="tokens-grid" id="tokens-grid">
+            <!-- Tokens will be populated here -->
+        </div>
+
+        <table class="tokens-table" id="tokens-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Symbol</th>
+                    <th>Name</th>
+                    <th>Market Cap</th>
+                    <th>Price</th>
+                    <th>24h Change</th>
+                    <th>Address</th>
+                </tr>
+            </thead>
+            <tbody id="tokens-table-body">
+                <!-- Table rows will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
