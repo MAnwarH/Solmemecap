@@ -255,9 +255,10 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
         percentageDisplay = `<span class="${token.isPositive ? 'positive' : 'negative'}">${sign}${token.changePercent.toFixed(2)}%</span>`;
     }
 
-    // Create image element with fallback
+    // Create image element with fallback and rank-based sizing
+    const imageClass = marketCapFilter === 'all' && index >= 8 ? 'tile-image tile-image-small' : 'tile-image';
     const imageElement = token.imageUrl ? 
-        `<img src="${token.imageUrl}" alt="${token.symbol}" class="tile-image" onerror="this.style.display='none'">` : 
+        `<img src="${token.imageUrl}" alt="${token.symbol}" class="${imageClass}" onerror="this.style.display='none'">` : 
         '';
     
     tile.innerHTML = `

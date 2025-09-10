@@ -559,6 +559,13 @@ body {
     transform: scale(1.05);
 }
 
+.tile-image-small {
+    width: 16px !important;
+    height: 16px !important;
+    top: 4px;
+    right: 4px;
+}
+
 @keyframes tileSlideIn {
     from {
         opacity: 0;
@@ -815,6 +822,13 @@ body {
         height: 28px;
     }
     
+    .tile-image-small {
+        width: 14px !important;
+        height: 14px !important;
+        top: 3px;
+        right: 3px;
+    }
+    
     .tile-symbol {
         font-size: 0.9rem !important;
         min-height: 16px;
@@ -975,6 +989,13 @@ body {
         width: 24px;
         height: 24px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tile-image-small {
+        width: 12px !important;
+        height: 12px !important;
+        top: 2px;
+        right: 2px;
     }
     
     .tile-symbol {
