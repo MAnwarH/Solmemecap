@@ -540,21 +540,25 @@ body {
 
 .tile-image {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 40%;
-    max-height: 40%;
+    top: 6px;
+    right: 6px;
+    width: 25%;
+    height: 25%;
+    max-width: 32px;
+    max-height: 32px;
+    min-width: 16px;
+    min-height: 16px;
     border-radius: 50%;
     object-fit: cover;
-    z-index: 1;
-    opacity: 0.15;
-    transition: opacity 0.3s ease;
+    z-index: 5;
+    opacity: 1;
+    transition: transform 0.2s ease;
     pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .coin360-tile:hover .tile-image {
-    opacity: 0.25;
+    transform: scale(1.05);
 }
 
 @keyframes tileSlideIn {
@@ -807,13 +811,14 @@ body {
     }
     
     .tile-image {
-        max-width: 35%;
-        max-height: 35%;
-        opacity: 0.12;
-    }
-    
-    .coin360-tile:hover .tile-image {
-        opacity: 0.2;
+        top: 4px;
+        right: 4px;
+        width: 22%;
+        height: 22%;
+        max-width: 28px;
+        max-height: 28px;
+        min-width: 14px;
+        min-height: 14px;
     }
     
     .tile-symbol {
@@ -971,13 +976,15 @@ body {
     }
     
     .tile-image {
-        max-width: 30%;
-        max-height: 30%;
-        opacity: 0.1;
-    }
-    
-    .coin360-tile:hover .tile-image {
-        opacity: 0.18;
+        top: 3px;
+        right: 3px;
+        width: 20%;
+        height: 20%;
+        max-width: 24px;
+        max-height: 24px;
+        min-width: 12px;
+        min-height: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     
     .tile-symbol {
