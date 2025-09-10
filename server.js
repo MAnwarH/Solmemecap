@@ -195,13 +195,13 @@ const TOP_TOKENS_QUERY = `{
   }
 }`;
 
-// GraphQL query for mid-range Solana memecoins (3M-10M market cap)
+// GraphQL query for mid-range Solana memecoins (3M-10M market cap) - Enhanced with latest data
 const MID_RANGE_TOKENS_QUERY = `{
   Solana {
     TokenSupplyUpdates(
       limitBy: {by: TokenSupplyUpdate_Currency_MintAddress, count: 1}
       limit: {count: 100}
-      orderBy: {descending: TokenSupplyUpdate_PostBalanceInUSD}
+      orderBy: {descending: Block_Time}
       where: {
         TokenSupplyUpdate: {
           Currency: {
@@ -216,7 +216,7 @@ const MID_RANGE_TOKENS_QUERY = `{
               "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
               "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
               "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
-              "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+              "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7AR5T4nud4EkHBof",
               "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
               "AFbX8oGjGpmVFywbVouvhQSRmiW2aR1mohfahi4Y2AdB",
               "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
@@ -237,7 +237,8 @@ const MID_RANGE_TOKENS_QUERY = `{
           }
           PostBalanceInUSD: {ge: "3000000", le: "10000000"}
         }
-        Block: {Time: {since: "2024-01-01T00:00:00Z"}}
+        Block: {Time: {since: "2024-12-01T00:00:00Z"}}
+        Transaction: {Result: {Success: true}}
       }
     ) {
       TokenSupplyUpdate {
@@ -252,6 +253,11 @@ const MID_RANGE_TOKENS_QUERY = `{
           TokenStandard
         }
         Marketcap: PostBalanceInUSD
+        TotalSupply: PostBalance
+      }
+      Block {
+        Time
+        Height
       }
       price_data: joinDEXTradeByTokens(
         join: inner
