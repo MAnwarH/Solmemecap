@@ -86,12 +86,16 @@ body {
 .coin-face::after {
     content: 'M';
     position: absolute;
-    bottom: 6px;
-    right: 8px;
-    font-size: 10px;
-    font-weight: bold;
-    color: #000;
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+    bottom: 4px;
+    right: 6px;
+    font-size: 12px;
+    font-weight: 900;
+    color: #000000;
+    text-shadow: 
+        1px 1px 0px rgba(255, 255, 255, 0.8),
+        0 0 2px rgba(255, 255, 255, 0.5);
+    font-family: 'Arial Black', Arial, sans-serif;
+    z-index: 10;
 }
 
 .coin-face.front {
