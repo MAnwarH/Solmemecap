@@ -895,7 +895,23 @@ body {
         grid-template-columns: repeat(4, 1fr);
         gap: 1px;
         padding: 2px;
-        grid-auto-rows: 70px;
+        grid-auto-rows: 100px; /* Increased height for mobile to maintain hierarchy */
+    }
+    
+    /* Mobile-specific tile span adjustments */
+    .coin360-tile.mobile-large {
+        grid-column: span 2 !important; /* Force 2 columns max on mobile */
+        grid-row: span 2 !important; /* Increased height for hierarchy */
+    }
+    
+    .coin360-tile.mobile-medium {
+        grid-column: span 2 !important; /* Force 2 columns max on mobile */
+        grid-row: span 1 !important;
+    }
+    
+    .coin360-tile.mobile-small {
+        grid-column: span 1 !important;
+        grid-row: span 1 !important;
     }
     
     .coin360-legend {

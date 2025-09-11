@@ -180,28 +180,64 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
     const tokenAddress = token.address || 'N/A';
     const marketCapRatio = Math.sqrt(token.marketCap / maxMarketCap);
     
+    // Check if we're on mobile
+    const isMobile = window.innerWidth <= 480;
+    
     // Calculate grid spans based on market cap (Masonry-style)
     const baseSpan = 1;
     const maxSpan = 4;
     let colSpan = Math.max(baseSpan, Math.min(maxSpan, Math.ceil(marketCapRatio * maxSpan)));
     let rowSpan = Math.max(baseSpan, Math.min(3, Math.ceil(marketCapRatio * 2.5)));
     
-    // Ensure top 3 tokens are prominent
-    if (index < 3) {
-        colSpan = Math.max(colSpan, 3);
-        rowSpan = Math.max(rowSpan, 2);
-    }
-    
-    // Apply scaling for mid-range filter to reduce overall box sizes
-    if (marketCapFilter === 'mid-range') {
-        const midRangeScale = 0.6; // Scale down by 40%
-        colSpan = Math.max(baseSpan, Math.ceil(colSpan * midRangeScale));
-        rowSpan = Math.max(baseSpan, Math.ceil(rowSpan * midRangeScale));
-        
-        // Ensure top 3 tokens remain prominent but scaled
+    // Mobile-specific logic for better 2-per-row layout
+    if (isMobile) {
+        // For All coins: Top 3 get span 2 (half row), others get span 1 or 2 based on market cap
+        if (marketCapFilter === 'all') {
+            if (index < 3) {
+                colSpan = 2; // Top 3 tokens take 2 columns (half row)
+                rowSpan = 2; // Increased height for hierarchy
+                tile.classList.add('mobile-large');
+            } else if (index < 10) {
+                colSpan = 2; // Next 7 also take 2 columns for better visibility
+                rowSpan = 1;
+                tile.classList.add('mobile-medium');
+            } else {
+                colSpan = 1; // Smaller tokens take 1 column
+                rowSpan = 1;
+                tile.classList.add('mobile-small');
+            }
+        }
+        // For Mid-range: Top 39 get span 2, rest get span 1
+        else if (marketCapFilter === 'mid-range') {
+            if (index < 39) {
+                colSpan = 2; // Top 39 tokens take 2 columns (half row)
+                rowSpan = index < 3 ? 2 : 1; // Top 3 get more height for hierarchy
+                tile.classList.add(index < 3 ? 'mobile-large' : 'mobile-medium');
+            } else {
+                colSpan = 1; // Rest take 1 column
+                rowSpan = 1;
+                tile.classList.add('mobile-small');
+            }
+        }
+    } else {
+        // Desktop logic (original)
+        // Ensure top 3 tokens are prominent
         if (index < 3) {
-            colSpan = Math.max(colSpan, 2);
-            rowSpan = Math.max(rowSpan, 1);
+            colSpan = Math.max(colSpan, 3);
+            rowSpan = Math.max(rowSpan, 2);
+        }
+        
+        // Apply scaling for mid-range filter to reduce overall box sizes
+        if (marketCapFilter === 'mid-range') {
+            const midRangeScale = 0.6; // Scale down by 40%
+            colSpan = Math.max(baseSpan, Math.ceil(colSpan * midRangeScale));
+            rowSpan = Math.max(baseSpan, Math.ceil(rowSpan * midRangeScale));
+            
+            // Ensure top 3 tokens remain prominent but scaled
+            if (index < 3) {
+                colSpan = Math.max(colSpan, 2);
+                rowSpan = Math.max(rowSpan, 1);
+            }
         }
     }
     
@@ -675,6 +711,25 @@ function changeMarketCapFilter(filter) {
 
 // Load tokens when page loads (bypass cooldown on first load)
 document.addEventListener('DOMContentLoaded', () => loadTokens(true));
+
+// Handle window resize to reapply mobile/desktop classes
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Re-render tokens with current filter to apply correct mobile/desktop styling
+        if (currentTokens.length > 0) {
+            const tokensGrid = document.getElementById('tokens-grid');
+            const maxMarketCap = Math.max(...currentTokens.map(t => t.marketCap));
+            tokensGrid.innerHTML = '';
+            
+            currentTokens.forEach((token, index) => {
+                const tile = createCoin360Tile(token, index, maxMarketCap, currentMarketCapFilter);
+                tokensGrid.appendChild(tile);
+            });
+        }
+    }, 250); // Debounce resize events
+});
 
 // Auto-refresh removed to save API credits
 // Use the refresh button to manually update data
