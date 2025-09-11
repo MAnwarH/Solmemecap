@@ -55,8 +55,7 @@ body {
     position: relative;
     width: 32px;
     height: 32px;
-    transform-style: preserve-3d;
-    animation: coinSpin 3s linear infinite;
+    animation: coinRotate 4s linear infinite;
 }
 
 .coin-face {
@@ -85,21 +84,16 @@ body {
 }
 
 .coin-face.front {
-    transform: rotateY(0deg) translateZ(2px);
+    transform: translateZ(1px);
 }
 
 .coin-face.back {
-    transform: rotateY(180deg) translateZ(2px);
+    display: none; /* Hide back face for circular rotation */
 }
 
-.coin-face.back::before {
-    content: 'M';
-    font-size: 18px;
-}
-
-@keyframes coinSpin {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+@keyframes coinRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 @keyframes gradientShift {
