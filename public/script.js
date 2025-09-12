@@ -195,6 +195,7 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
     let colSpan = Math.max(baseSpan, Math.min(maxSpan, Math.ceil(marketCapRatio * maxSpan)));
     let rowSpan = Math.max(baseSpan, Math.min(3, Math.ceil(marketCapRatio * 2.5)));
     
+    
     // Mobile-specific logic for better 2-per-row layout
     if (isMobile) {
         // For All coins: Top 3 get span 2 (half row), others get span 1 or 2 based on market cap
@@ -304,8 +305,11 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
         `<img src="${token.imageUrl}" alt="${token.symbol}" class="${imageClass}" onerror="this.style.display='none'">` : 
         '';
     
+    const rankDisplay = `#${index + 1}`;
+    const rankClass = 'tile-rank';
+    
     tile.innerHTML = `
-        <div class="tile-rank">#${index + 1}</div>
+        <div class="${rankClass}">${rankDisplay}</div>
         ${imageElement}
         <div class="tile-content">
             <div class="tile-symbol" style="font-size: ${symbolSize}px">${token.symbol}</div>
@@ -386,22 +390,24 @@ function createTokenCard(token, index) {
     return card;
 }
 
+
 function openDexscreener(address, symbol) {
     if (address && address !== 'N/A') {
-        let dexscreenerUrl;
+        let targetUrl;
         
         // Check if this is CoinGecko data (prefixed with "coingecko:")
         if (address.startsWith('coingecko:')) {
-            // For CoinGecko tokens, search by symbol since we don't have contract addresses
-            dexscreenerUrl = `https://dexscreener.com/search?q=${encodeURIComponent(symbol)} solana`;
-            showToast('Searching on Dexscreener...');
+            // For CoinGecko tokens, open CoinGecko page directly
+            const coinId = address.replace('coingecko:', '');
+            targetUrl = `https://www.coingecko.com/coins/${coinId}`;
+            showToast('Opening on CoinGecko...');
         } else {
-            // For BitQuery tokens, use the actual mint address
-            dexscreenerUrl = `https://dexscreener.com/solana/${address}`;
-            showToast('Opening on Dexscreener...');
+            // For BitQuery tokens, use the actual mint address on DexScreener
+            targetUrl = `https://dexscreener.com/solana/${address}`;
+            showToast('Opening on DexScreener...');
         }
         
-        window.open(dexscreenerUrl, '_blank');
+        window.open(targetUrl, '_blank');
     } else {
         showToast('Token address not available');
     }
@@ -433,7 +439,7 @@ function showCoin360Tooltip(token, element) {
             }
             <div>Address: <strong>${token.address.substring(0, 12)}...</strong></div>
         </div>
-        <div class="tooltip-note">Click to view on Dexscreener</div>
+        <div class="tooltip-note">Click to view token details</div>
     `;
     
     document.body.appendChild(tooltip);

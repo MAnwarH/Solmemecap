@@ -1205,3 +1205,60 @@ body {
         font-size: 0.8rem;
     }
 }
+
+/* Banner Ad Styles */
+.banner-ad {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.banner-ad:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.banner-ad-1 {
+    width: 350px;
+    height: 80px;
+}
+
+.banner-ad-2 {
+    width: 350px;
+    height: 80px;
+}
+
+.banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Responsive banner adjustments */
+@media (max-width: 768px) {
+    .banner-ad-1, .banner-ad-2 {
+        width: 280px;
+        height: 64px;
+    }
+    
+    .header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .banner-ad-1, .banner-ad-2 {
+        width: 210px;
+        height: 48px;
+    }
+}
+
+
+
