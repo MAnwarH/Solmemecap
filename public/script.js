@@ -93,6 +93,12 @@ async function fetchTokens(marketCapFilter = 'all') {
         const data = await response.json();
         console.log('✅ Secure API Response received');
         
+        // Handle new API response structure with apiInfo
+        if (data.apiInfo) {
+            console.log(`📡 API Source: ${data.apiInfo.source}${data.apiInfo.fallbackUsed ? ' (fallback)' : ''}`);
+            updateApiStatus(data.apiInfo);
+        }
+        
         if (data.error) {
             console.warn('API Error:', data.error);
             // Fallback to mock data if API fails
@@ -527,6 +533,84 @@ function showToast(message) {
     }, 2000);
 }
 
+// API source management functions
+async function getApiStatus() {
+    try {
+        const response = await fetch('/api/source');
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.warn('Failed to get API status:', error);
+    }
+    return null;
+}
+
+async function setApiSource(source) {
+    try {
+        const response = await fetch('/api/set-source', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ source })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ API source changed:', result);
+            showToast(result.message || `Switched to ${source} API`);
+            updateApiSourceSelector(source);
+            return true;
+        } else {
+            const error = await response.json();
+            console.error('❌ Failed to change API source:', error);
+            showToast(`Failed to switch API: ${error.error}`);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ API source change error:', error);
+        showToast('Failed to change API source');
+        return false;
+    }
+}
+
+function updateApiStatus(apiInfo) {
+    const statusElement = document.getElementById('api-status');
+    const sourceElement = document.getElementById('api-source');
+    
+    if (statusElement && sourceElement) {
+        let statusText = '';
+        let statusClass = '';
+        
+        if (apiInfo.isMiddleRange) {
+            statusText = 'BitQuery';
+            statusClass = 'bitquery';
+        } else {
+            if (apiInfo.fallbackUsed) {
+                statusText = `${apiInfo.source} (fallback)`;
+                statusClass = 'fallback';
+            } else {
+                statusText = apiInfo.source;
+                statusClass = apiInfo.source;
+            }
+        }
+        
+        statusElement.textContent = statusText;
+        statusElement.className = `api-status ${statusClass}`;
+        
+        // Update source selector
+        updateApiSourceSelector(apiInfo.currentPreference);
+    }
+}
+
+function updateApiSourceSelector(currentSource) {
+    const selector = document.getElementById('api-source-selector');
+    if (selector) {
+        selector.value = currentSource;
+    }
+}
+
 async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
     const currentTime = Date.now();
     const timeSinceLastRefresh = currentTime - lastRefreshTime;
@@ -709,8 +793,38 @@ function changeMarketCapFilter(filter) {
     loadTokens(true, filter);
 }
 
-// Load tokens when page loads (bypass cooldown on first load)
-document.addEventListener('DOMContentLoaded', () => loadTokens(true));
+async function handleApiSourceChange(source) {
+    // Show notification about mid-range limitation
+    if (currentMarketCapFilter === 'mid-range' && source !== 'auto') {
+        showToast('Mid-range coins always use BitQuery API');
+        updateApiSourceSelector('auto'); // Reset selector
+        return;
+    }
+    
+    const success = await setApiSource(source);
+    if (success) {
+        // Refresh tokens with new API source
+        loadTokens(true, currentMarketCapFilter);
+    } else {
+        // Reset selector on failure
+        const apiStatus = await getApiStatus();
+        if (apiStatus) {
+            updateApiSourceSelector(apiStatus.currentSource);
+        }
+    }
+}
+
+// Load tokens and API status when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize API status
+    const apiStatus = await getApiStatus();
+    if (apiStatus) {
+        updateApiSourceSelector(apiStatus.currentSource);
+    }
+    
+    // Load tokens (bypass cooldown on first load)
+    loadTokens(true);
+});
 
 // Handle window resize to reapply mobile/desktop classes
 let resizeTimeout;

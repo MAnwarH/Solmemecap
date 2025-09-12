@@ -38,6 +38,11 @@
                     <span class="stat-label">Total Tokens:</span>
                     <span id="token-count" class="stat-value">-</span>
                 </div>
+                <div class="stat-item">
+                    <span class="stat-label">API Source:</span>
+                    <span id="api-status" class="stat-value api-status">-</span>
+                    <span id="api-source" style="display: none;"></span>
+                </div>
             </div>
             <div class="refresh-btn" onclick="loadTokens(false, currentMarketCapFilter)">
                 <span class="refresh-icon">🔄</span>
@@ -61,6 +66,13 @@
                     <select id="market-cap-dropdown" onchange="changeMarketCapFilter(this.value)">
                         <option value="all">🚀 All Coins (5M+)</option>
                         <option value="mid-range">💎 Mid-Range (3M-10M)</option>
+                    </select>
+                </div>
+                <div class="api-source-filter">
+                    <select id="api-source-selector" onchange="handleApiSourceChange(this.value)">
+                        <option value="auto">🤖 Auto (Smart Fallback)</option>
+                        <option value="bitquery">🔍 BitQuery Only</option>
+                        <option value="coingecko">🦎 CoinGecko Only</option>
                     </select>
                 </div>
                 <div class="layout-selector">
