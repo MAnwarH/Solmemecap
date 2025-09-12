@@ -89,39 +89,96 @@ async function fetchFromCoinGecko() {
         const data = await response.json();
         console.log(`✅ CoinGecko returned ${data.length} tokens`);
         
-        // Transform CoinGecko data to match our app structure
-        const transformedTokens = data
-            .filter(token => token.market_cap && token.market_cap >= 5000000) // Filter for 5M+ market cap
-            .map((token, index) => ({
-                TokenSupplyUpdate: {
-                    Currency: {
-                        Name: token.name,
-                        Symbol: token.symbol.toUpperCase(),
-                        MintAddress: `coingecko:${token.id}`, // Mark as CoinGecko data for frontend handling
-                        Decimals: 6, // Default for most Solana tokens
-                        Uri: null,
-                        Fungible: true,
-                        Native: false,
-                        TokenStandard: 'Token',
-                        ImageUrl: token.image // CoinGecko provides image URLs directly
-                    },
-                    Marketcap: token.market_cap.toString(),
-                    TotalSupply: token.total_supply || '0'
-                },
-                Block: {
-                    Time: new Date().toISOString(),
-                    Height: Date.now()
-                },
-                price_data: {
-                    Trade: {
-                        current_price: token.current_price,
-                        price_24h_ago: token.current_price / (1 + (token.price_change_percentage_24h || 0) / 100)
-                    },
-                    price_change_24h: token.price_change_percentage_24h || 0
+        // Filter tokens by market cap first
+        const filteredTokens = data.filter(token => token.market_cap && token.market_cap >= 5000000);
+        
+        // Fetch contract addresses for Solana tokens (with rate limiting)
+        console.log('🔍 Fetching Solana contract addresses...');
+        const tokensWithContracts = [];
+        
+        // Process in smaller batches to avoid rate limits
+        const batchSize = 10;
+        for (let i = 0; i < Math.min(filteredTokens.length, 100); i += batchSize) {
+            const batch = filteredTokens.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (token) => {
+                try {
+                    // Small delay between requests to avoid rate limits
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    const tokenDetailUrl = `${COINGECKO_ENDPOINT}/coins/${token.id}`;
+                    const tokenResponse = await fetch(tokenDetailUrl, {
+                        headers: {
+                            'x-cg-demo-api-key': COINGECKO_API_KEY
+                        }
+                    });
+                    
+                    if (tokenResponse.ok) {
+                        const tokenDetail = await tokenResponse.json();
+                        // Get Solana contract address if available
+                        const solanaAddress = tokenDetail.platforms?.solana;
+                        
+                        return {
+                            ...token,
+                            solanaContract: solanaAddress
+                        };
+                    } else {
+                        // If detail fetch fails, use the coin ID as fallback
+                        return {
+                            ...token,
+                            solanaContract: null
+                        };
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Failed to fetch contract for ${token.id}:`, error.message);
+                    return {
+                        ...token,
+                        solanaContract: null
+                    };
                 }
-            }));
+            });
+            
+            const batchResults = await Promise.all(batchPromises);
+            tokensWithContracts.push(...batchResults);
+            
+            // Longer delay between batches
+            if (i + batchSize < Math.min(filteredTokens.length, 100)) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+        
+        console.log(`✅ Fetched contract addresses for ${tokensWithContracts.length} tokens`);
+        
+        // Transform CoinGecko data to match our app structure
+        const transformedTokens = tokensWithContracts.map((token, index) => ({
+            TokenSupplyUpdate: {
+                Currency: {
+                    Name: token.name,
+                    Symbol: token.symbol.toUpperCase(),
+                    MintAddress: token.solanaContract || `coingecko:${token.id}`, // Use actual contract address if available, fallback to coin ID
+                    Decimals: 6, // Default for most Solana tokens
+                    Uri: null,
+                    Fungible: true,
+                    Native: false,
+                    TokenStandard: 'Token',
+                    ImageUrl: token.image // CoinGecko provides image URLs directly
+                },
+                Marketcap: token.market_cap.toString(),
+                TotalSupply: token.total_supply || '0'
+            },
+            Block: {
+                Time: new Date().toISOString(),
+                Height: Date.now()
+            },
+            price_data: {
+                Trade: {
+                    current_price: token.current_price,
+                    price_24h_ago: token.current_price / (1 + (token.price_change_percentage_24h || 0) / 100)
+                },
+                price_change_24h: token.price_change_percentage_24h || 0
+            }
+        }));
 
-        console.log(`✅ Transformed ${transformedTokens.length} CoinGecko tokens`);
+        console.log(`✅ Transformed ${transformedTokens.length} CoinGecko tokens with contract addresses`);
         return {
             data: {
                 Solana: {
