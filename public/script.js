@@ -318,8 +318,7 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
 
     // Add click handler to open Dexscreener
     tile.addEventListener('click', () => {
-        openDexscreener(tokenAddress);
-        showToast(`Opening ${token.symbol} on Dexscreener...`);
+        openDexscreener(tokenAddress, token.symbol);
     });
 
     // Add hover effect
@@ -374,24 +373,35 @@ function createTokenCard(token, index) {
                 <span class="address-label">CA:</span>
                 <span class="address-value" onclick="event.stopPropagation(); copyAddress('${tokenAddress}')">${tokenAddress.substring(0, 8)}...</span>
             </div>
-            <div class="dex-link" onclick="event.stopPropagation(); openDexscreener('${tokenAddress}')">
+            <div class="dex-link" onclick="event.stopPropagation(); openDexscreener('${tokenAddress}', '${token.symbol}')">
                 📊 View on DEX
             </div>
         </div>
     `;
 
     card.addEventListener('click', () => {
-        openDexscreener(tokenAddress);
+        openDexscreener(tokenAddress, token.symbol);
     });
 
     return card;
 }
 
-function openDexscreener(address) {
+function openDexscreener(address, symbol) {
     if (address && address !== 'N/A') {
-        const dexscreenerUrl = `https://dexscreener.com/solana/${address}`;
+        let dexscreenerUrl;
+        
+        // Check if this is CoinGecko data (prefixed with "coingecko:")
+        if (address.startsWith('coingecko:')) {
+            // For CoinGecko tokens, search by symbol since we don't have contract addresses
+            dexscreenerUrl = `https://dexscreener.com/search?q=${encodeURIComponent(symbol)} solana`;
+            showToast('Searching on Dexscreener...');
+        } else {
+            // For BitQuery tokens, use the actual mint address
+            dexscreenerUrl = `https://dexscreener.com/solana/${address}`;
+            showToast('Opening on Dexscreener...');
+        }
+        
         window.open(dexscreenerUrl, '_blank');
-        showToast('Opening on Dexscreener...');
     } else {
         showToast('Token address not available');
     }
@@ -584,14 +594,15 @@ function updateApiStatus(apiInfo) {
         let statusClass = '';
         
         if (apiInfo.isMiddleRange) {
-            statusText = 'BitQuery';
+            statusText = 'V1';
             statusClass = 'bitquery';
         } else {
             if (apiInfo.fallbackUsed) {
-                statusText = `${apiInfo.source} (fallback)`;
+                const versionText = apiInfo.source === 'bitquery' ? 'V1' : 'V2';
+                statusText = `${versionText} (fallback)`;
                 statusClass = 'fallback';
             } else {
-                statusText = apiInfo.source;
+                statusText = apiInfo.source === 'bitquery' ? 'V1' : 'V2';
                 statusClass = apiInfo.source;
             }
         }
@@ -767,8 +778,7 @@ function createTableRow(token, index) {
     
     // Add click handler to open Dexscreener
     row.addEventListener('click', () => {
-        openDexscreener(tokenAddress);
-        showToast(`Opening ${token.symbol} on Dexscreener...`);
+        openDexscreener(tokenAddress, token.symbol);
     });
     
     return row;
@@ -796,7 +806,7 @@ function changeMarketCapFilter(filter) {
 async function handleApiSourceChange(source) {
     // Show notification about mid-range limitation
     if (currentMarketCapFilter === 'mid-range' && source !== 'auto') {
-        showToast('Mid-range coins always use BitQuery API');
+        showToast('Mid-range coins always use V1');
         updateApiSourceSelector('auto'); // Reset selector
         return;
     }

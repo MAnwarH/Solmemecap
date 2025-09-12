@@ -97,7 +97,7 @@ async function fetchFromCoinGecko() {
                     Currency: {
                         Name: token.name,
                         Symbol: token.symbol.toUpperCase(),
-                        MintAddress: token.id, // Using CoinGecko ID as identifier
+                        MintAddress: `coingecko:${token.id}`, // Mark as CoinGecko data for frontend handling
                         Decimals: 6, // Default for most Solana tokens
                         Uri: null,
                         Fungible: true,
