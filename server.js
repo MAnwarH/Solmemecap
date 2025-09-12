@@ -72,9 +72,9 @@ async function getTokenImage(uri) {
 // CoinGecko service functions
 async function fetchFromCoinGecko() {
     try {
-        console.log('🦎 Fetching tokens from CoinGecko API (Solana ecosystem)...');
+        console.log('🦎 Fetching tokens from CoinGecko API (Solana memecoins)...');
         
-        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-ecosystem&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h`;
+        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h`;
         
         const response = await fetch(url, {
             headers: {
