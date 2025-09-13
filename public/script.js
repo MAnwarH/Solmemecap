@@ -1,6 +1,49 @@
 // 🔒 SECURE: API key is now safely stored on server-side
 // No more exposed credentials in frontend code!
 
+// 💎 SPONSORED COINS DATA - Featured premium projects
+const sponsoredCoins = [
+    {
+        symbol: 'MOONX',
+        name: 'MoonX Protocol',
+        address: 'Mo0nX1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
+        marketCap: 15000000,
+        price: 0.0000234,
+        changePercent: 12.34,
+        isPositive: true,
+        hasValidChange: true,
+        imageUrl: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=120&h=120&fit=crop&crop=center',
+        website: 'https://moonxprotocol.com',
+        description: 'Next-gen DeFi protocol for lunar missions'
+    },
+    {
+        symbol: 'ROCKET',
+        name: 'Rocket Finance',
+        address: 'Ro0cK3t1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s',
+        marketCap: 8500000,
+        price: 0.0000156,
+        changePercent: 25.67,
+        isPositive: true,
+        hasValidChange: true,
+        imageUrl: 'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=120&h=120&fit=crop&crop=center',
+        website: 'https://rocketfinance.io',
+        description: 'Blazing fast cross-chain yield farming'
+    },
+    {
+        symbol: 'GEMS',
+        name: 'Hidden Gems',
+        address: 'Ge0mS1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0',
+        marketCap: 6200000,
+        price: 0.0000089,
+        changePercent: 8.92,
+        isPositive: true,
+        hasValidChange: true,
+        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=120&h=120&fit=crop&crop=center',
+        website: 'https://hiddengems.finance',
+        description: 'Discover undervalued crypto treasures'
+    }
+];
+
 // Mock data for demonstration (remove when using real API)
 const mockTokens = [
     {
@@ -71,6 +114,75 @@ const mockTokens = [
     }
 ];
 
+
+// 💎 SPONSORED COINS: Create and render sponsored coin tiles
+function createSponsoredTile(coin, index) {
+    const tile = document.createElement('div');
+    tile.className = 'sponsored-tile';
+
+    // Format percentage display
+    let percentageDisplay = 'N/A';
+    let percentClass = '';
+    if (coin.hasValidChange) {
+        const sign = coin.isPositive ? '+' : '';
+        percentageDisplay = `${sign}${coin.changePercent.toFixed(2)}%`;
+        percentClass = coin.isPositive ? 'positive' : 'negative';
+    }
+
+    // Use similar structure to ranking tiles but with "AD" instead of rank
+    const imageElement = coin.imageUrl ?
+        `<img src="${coin.imageUrl}" alt="${coin.symbol}" class="sponsored-image" onerror="this.style.display='none'">` :
+        '';
+
+    tile.innerHTML = `
+        <div class="sponsored-badge">AD</div>
+        ${imageElement}
+        <div class="tile-content">
+            <div class="sponsored-symbol">${coin.symbol}</div>
+            <div class="sponsored-name">$${formatNumber(coin.marketCap)}</div>
+            <div class="sponsored-address">
+                ${percentageDisplay}
+            </div>
+        </div>
+    `;
+
+    // Add click handler to open website or Dexscreener
+    tile.addEventListener('click', () => {
+        if (coin.website) {
+            window.open(coin.website, '_blank');
+        } else {
+            openDexscreener(coin.address, coin.symbol);
+        }
+    });
+
+    // Add hover effects similar to ranking tiles
+    tile.addEventListener('mouseenter', () => {
+        tile.style.transform = 'scale(1.02)';
+        tile.style.filter = 'brightness(1.1)';
+    });
+
+    tile.addEventListener('mouseleave', () => {
+        tile.style.transform = 'scale(1)';
+        tile.style.filter = 'brightness(1)';
+    });
+
+    return tile;
+}
+
+function populateSponsoredSection() {
+    const sponsoredGrid = document.getElementById('sponsored-grid');
+    if (!sponsoredGrid) return;
+
+    // Clear existing content
+    sponsoredGrid.innerHTML = '';
+
+    // Create and append sponsored tiles
+    sponsoredCoins.forEach((coin, index) => {
+        const tile = createSponsoredTile(coin, index);
+        sponsoredGrid.appendChild(tile);
+    });
+}
+
 async function fetchTokens(marketCapFilter = 'all') {
     try {
         let filterDesc;
@@ -122,18 +234,18 @@ async function fetchTokens(marketCapFilter = 'all') {
         const tokens = data.data?.Solana?.TokenSupplyUpdates || [];
         // Token count processed (logging removed for production security)
         
-        return tokens.map((tokenData, index) => {
+        const transformedTokens = tokens.map((tokenData, index) => {
             const supplyUpdate = tokenData.TokenSupplyUpdate;
             const currency = supplyUpdate.Currency;
             const marketCap = parseFloat(supplyUpdate.Marketcap);
             const priceData = tokenData.price_data;
-            
+
             // Extract real price change data
             let changePercent = 0;
             let isPositive = true;
             let currentPrice = 0;
             let hasValidChange = false;
-            
+
             if (priceData && priceData.Trade && priceData.price_change_24h !== null) {
                 changePercent = parseFloat(priceData.price_change_24h) || 0;
                 isPositive = changePercent >= 0;
@@ -146,7 +258,7 @@ async function fetchTokens(marketCapFilter = 'all') {
                 currentPrice = marketCap / 1000000000; // Estimate from market cap
                 hasValidChange = false;
             }
-            
+
             return {
                 symbol: currency.Symbol || 'UNKNOWN',
                 name: currency.Name || 'Unknown Token',
@@ -166,7 +278,9 @@ async function fetchTokens(marketCapFilter = 'all') {
             };
         }).sort((a, b) => b.marketCap - a.marketCap) // Sort by market cap descending (highest first)
         .map((token, index) => ({ ...token, rank: index + 1 })); // Update ranks after sorting
-        
+
+        return transformedTokens;
+
     } catch (error) {
         // Fallback to mock data if API fails
         return mockTokens;
@@ -257,29 +371,29 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
     
     // Color based on real price change
     let backgroundColor, borderColor;
-    
+
     if (!token.hasValidChange) {
         backgroundColor = `hsla(0, 0%, 40%, 0.4)`;
         borderColor = `hsla(0, 0%, 50%, 0.3)`;
     } else {
         const absChange = Math.abs(token.changePercent);
-        
+
         if (token.isPositive) {
             // Green intensity: 0.1% = light, 10%+ = deep green
             const intensity = Math.min(1, absChange / 10); // Scale to 10% max for full intensity
             const greenAlpha = 0.15 + (intensity * 0.7); // 0.15 to 0.85 opacity range
             const saturation = 50 + (intensity * 30); // 50% to 80% saturation
             const lightness = 50 - (intensity * 10); // 50% to 40% lightness (darker = more intense)
-            
+
             backgroundColor = `hsla(120, ${saturation}%, ${lightness}%, ${greenAlpha})`;
             borderColor = `hsla(120, ${saturation + 10}%, ${lightness + 5}%, ${0.4 + intensity * 0.5})`;
         } else {
-            // Red intensity: -0.1% = light, -10%+ = deep red  
+            // Red intensity: -0.1% = light, -10%+ = deep red
             const intensity = Math.min(1, absChange / 10); // Scale to 10% max for full intensity
             const redAlpha = 0.15 + (intensity * 0.7); // 0.15 to 0.85 opacity range
             const saturation = 60 + (intensity * 25); // 60% to 85% saturation
             const lightness = 55 - (intensity * 15); // 55% to 40% lightness (darker = more intense)
-            
+
             backgroundColor = `hsla(0, ${saturation}%, ${lightness}%, ${redAlpha})`;
             borderColor = `hsla(0, ${saturation + 5}%, ${lightness + 5}%, ${0.4 + intensity * 0.5})`;
         }
@@ -616,7 +730,6 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
     const errorMessage = document.getElementById('error-message');
     const tokensGrid = document.getElementById('tokens-grid');
     const tokenCount = document.getElementById('token-count');
-    const lastUpdated = document.getElementById('last-updated');
 
     loading.style.display = 'block';
     errorMessage.style.display = 'none';
@@ -624,7 +737,10 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
 
     try {
         const tokens = await fetchTokens(marketCapFilter);
-        
+
+        // Populate sponsored section first
+        populateSponsoredSection();
+
         loading.style.display = 'none';
 
         if (tokens && tokens.length > 0) {
@@ -647,7 +763,6 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
             }
 
             tokenCount.textContent = tokens.length;
-            lastUpdated.textContent = new Date().toLocaleTimeString();
 
             // Update refresh time and button state
             lastRefreshTime = currentTime;
@@ -750,7 +865,7 @@ function createTableRow(token, index) {
     row.style.cursor = 'pointer';
     
     const tokenAddress = token.address || 'N/A';
-    
+
     // Format percentage display
     let percentageDisplay = 'N/A';
     let percentClass = '';
@@ -759,9 +874,18 @@ function createTableRow(token, index) {
         percentageDisplay = `${sign}${token.changePercent.toFixed(2)}%`;
         percentClass = token.isPositive ? 'positive' : 'negative';
     }
-    
+
+    // Create image element for table
+    const imageElement = token.imageUrl ?
+        `<img src="${token.imageUrl}" alt="${token.symbol}" class="table-token-image" onerror="this.style.display='none'">` :
+        '<div class="table-no-image">📊</div>';
+
+    const rankDisplay = `#${index + 1}`;
+    const rankClass = 'table-rank';
+
     row.innerHTML = `
-        <td class="table-rank" data-label="Rank">#${index + 1}</td>
+        <td class="${rankClass}" data-label="Rank">${rankDisplay}</td>
+        <td class="table-image" data-label="Image">${imageElement}</td>
         <td class="table-symbol" data-label="Symbol">${token.symbol}</td>
         <td data-label="Name">${token.name}</td>
         <td data-label="Market Cap">$${formatNumber(token.marketCap)}</td>

@@ -74,14 +74,12 @@
             
             <!-- First Banner Ad -->
             <div class="banner-ad banner-ad-1">
-                <img src="axiom-pro-banner.png" alt="Axiom Pro - Solana Trading Bot" class="banner-image">
+                <a href="https://axiom.trade/@solmemec" target="_blank">
+                    <img src="axiom-pro-banner.png" alt="Axiom Pro - Solana Trading Bot" class="banner-image">
+                </a>
             </div>
             
             <div class="stats-center">
-                <div class="stat-item">
-                    <span class="stat-label">Last Updated:</span>
-                    <span id="last-updated" class="stat-value">Loading...</span>
-                </div>
                 <div class="stat-item">
                     <span class="stat-label">Total Tokens:</span>
                     <span id="token-count" class="stat-value">-</span>
@@ -95,7 +93,9 @@
             
             <!-- Second Banner Ad -->
             <div class="banner-ad banner-ad-2">
-                <img src="space-banner.jpg" alt="Space Banner" class="banner-image">
+                <a href="#" target="_blank">
+                    <img src="space-banner.jpg" alt="Space Banner" class="banner-image">
+                </a>
             </div>
             
             <div class="refresh-btn" onclick="loadTokens(false, currentMarketCapFilter)">
@@ -142,6 +142,13 @@
             <p>Failed to load tokens. Please try again.</p>
         </div>
 
+        <!-- 💎 SPONSORED COINS SECTION -->
+        <div class="sponsored-section" id="sponsored-section">
+            <div class="sponsored-grid" id="sponsored-grid">
+                <!-- Sponsored coins will be populated here -->
+            </div>
+        </div>
+
         <div class="tokens-grid" id="tokens-grid">
             <!-- Tokens will be populated here -->
         </div>
@@ -150,6 +157,7 @@
             <thead>
                 <tr>
                     <th>Rank</th>
+                    <th>Image</th>
                     <th>Symbol</th>
                     <th>Name</th>
                     <th>Market Cap</th>
