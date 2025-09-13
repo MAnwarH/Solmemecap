@@ -842,4 +842,4 @@ window.addEventListener('resize', () => {
 });
 
 // Auto-refresh removed to save API credits
-// Use the refresh button to manually update data
+// Use the refresh button to manually update data// Deployment fix
