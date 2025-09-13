@@ -600,7 +600,7 @@ function updateApiStatus(apiInfo) {
 async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
     const currentTime = Date.now();
     const timeSinceLastRefresh = currentTime - lastRefreshTime;
-    
+
     // Check cooldown only if not bypassing (first load bypasses)
     if (!bypassCooldown && lastRefreshTime > 0 && timeSinceLastRefresh < REFRESH_COOLDOWN) {
         const remainingTime = Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh) / 1000 / 60);
@@ -608,7 +608,10 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
         updateRefreshButtonState(timeSinceLastRefresh);
         return;
     }
-    
+
+    // Set loading state and disable dropdown
+    setDropdownLoadingState(true);
+
     const loading = document.getElementById('loading');
     const errorMessage = document.getElementById('error-message');
     const tokensGrid = document.getElementById('tokens-grid');
@@ -623,29 +626,29 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
         const tokens = await fetchTokens(marketCapFilter);
         
         loading.style.display = 'none';
-        
+
         if (tokens && tokens.length > 0) {
             // Store tokens for layout switching
             currentTokens = tokens;
-            
+
             // Find the maximum market cap for sizing
             const maxMarketCap = Math.max(...tokens.map(t => t.marketCap));
-            
+
             // Create Coin360-style tiles
             tokens.forEach((token, index) => {
                 const tile = createCoin360Tile(token, index, maxMarketCap, marketCapFilter);
                 tokensGrid.appendChild(tile);
             });
-            
+
             // Also update table view if it's currently active
             const tokensTable = document.getElementById('tokens-table');
             if (tokensTable && tokensTable.style.display === 'table') {
                 populateTable(tokens);
             }
-            
+
             tokenCount.textContent = tokens.length;
             lastUpdated.textContent = new Date().toLocaleTimeString();
-            
+
             // Update refresh time and button state
             lastRefreshTime = currentTime;
             updateRefreshButtonState(0);
@@ -655,6 +658,9 @@ async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
     } catch (error) {
         loading.style.display = 'none';
         errorMessage.style.display = 'block';
+    } finally {
+        // Always re-enable dropdown when done (success or error)
+        setDropdownLoadingState(false);
     }
 }
 
@@ -667,6 +673,19 @@ let currentMarketCapFilter = 'all';
 // Refresh cooldown management
 let lastRefreshTime = 0;
 const REFRESH_COOLDOWN = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+// Loading state management
+let isLoading = false;
+
+function setDropdownLoadingState(loading) {
+    const dropdown = document.getElementById('market-cap-dropdown');
+    if (dropdown) {
+        dropdown.disabled = loading;
+        dropdown.style.opacity = loading ? '0.6' : '1';
+        dropdown.style.cursor = loading ? 'not-allowed' : 'pointer';
+    }
+    isLoading = loading;
+}
 
 function updateRefreshButtonState(timeSinceLastRefresh) {
     const refreshBtn = document.querySelector('.refresh-btn');
@@ -770,6 +789,17 @@ function populateTable(tokens) {
 }
 
 function changeMarketCapFilter(filter) {
+    // Prevent changing filter while loading
+    if (isLoading) {
+        showToast('Please wait for current data to load before switching filters');
+        // Reset dropdown to current filter
+        const dropdown = document.getElementById('market-cap-dropdown');
+        if (dropdown) {
+            dropdown.value = currentMarketCapFilter;
+        }
+        return;
+    }
+
     currentMarketCapFilter = filter;
     let filterDesc;
     if (filter === 'mid-range') {
@@ -780,7 +810,7 @@ function changeMarketCapFilter(filter) {
         filterDesc = '5M+ market cap';
     }
     showToast(`Switching to ${filterDesc} view...`);
-    
+
     // Load tokens with new filter, bypassing cooldown for filter changes
     loadTokens(true, filter);
 }
