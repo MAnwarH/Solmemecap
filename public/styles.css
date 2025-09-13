@@ -144,6 +144,31 @@ body {
     100% { background-position: 0% 50%; }
 }
 
+/* Main SEO H1 Heading - Now positioned under logo */
+.main-heading {
+    text-align: center;
+    font-size: 16px;
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 8px 0 0 0;
+    padding: 0;
+    background: none;
+    border: none;
+    backdrop-filter: none;
+    text-shadow: none;
+    letter-spacing: 0.3px;
+    line-height: 1.3;
+}
+
+/* Mobile responsive H1 */
+@media (max-width: 768px) {
+    .main-heading {
+        font-size: 14px;
+        margin: 6px 0 0 0;
+        letter-spacing: 0.2px;
+    }
+}
+
 .tagline {
     font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.7);
@@ -238,7 +263,6 @@ body {
 }
 
 .market-cap-filter select,
-.api-source-filter select,
 .layout-selector select {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -252,14 +276,12 @@ body {
 }
 
 .market-cap-filter select:hover,
-.api-source-filter select:hover,
 .layout-selector select:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
 }
 
 .market-cap-filter select option,
-.api-source-filter select option,
 .layout-selector select option {
     background: #2a2a2a;
     color: white;
@@ -291,6 +313,16 @@ body {
     background: rgba(255, 69, 0, 0.3);
     color: #FF6347;
     border: 1px solid rgba(255, 69, 0, 0.5);
+}
+.api-status.trending {
+    background: rgba(255, 20, 147, 0.3);
+    color: #FF69B4;
+    border: 1px solid rgba(255, 20, 147, 0.5);
+}
+.api-status.primary {
+    background: rgba(34, 139, 34, 0.3);
+    color: #90EE90;
+    border: 1px solid rgba(34, 139, 34, 0.5);
 }
 
 .legend-item {
@@ -688,6 +720,13 @@ body {
     right: 4px;
 }
 
+.tile-image-18px {
+    width: 18px !important;
+    height: 18px !important;
+    top: 4px;
+    right: 4px;
+}
+
 @keyframes tileSlideIn {
     from {
         opacity: 0;
@@ -951,6 +990,13 @@ body {
         right: 3px;
     }
     
+    .tile-image-18px {
+        width: 16px !important;
+        height: 16px !important;
+        top: 3px;
+        right: 3px;
+    }
+    
     .tile-symbol {
         font-size: 0.9rem !important;
         min-height: 16px;
@@ -1149,6 +1195,13 @@ body {
         right: 2px;
     }
     
+    .tile-image-18px {
+        width: 14px !important;
+        height: 14px !important;
+        top: 2px;
+        right: 2px;
+    }
+    
     .tile-symbol {
         font-size: 0.8rem !important;
         min-height: 14px;
@@ -1260,5 +1313,77 @@ body {
     }
 }
 
+/* SEO Footer Styles */
+.seo-footer {
+    margin-top: 40px;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.05), rgba(78, 205, 196, 0.05));
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.seo-content h3 {
+    color: #4ecdc4;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 0 2px 10px rgba(78, 205, 196, 0.3);
+}
+
+.seo-content p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    text-align: justify;
+}
+
+.seo-content strong {
+    color: #f9ca24;
+    font-weight: bold;
+}
+
+.seo-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.keyword-tag {
+    background: linear-gradient(45deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2));
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile responsive footer */
+@media (max-width: 768px) {
+    .seo-footer {
+        margin-top: 30px;
+        padding: 20px 15px;
+    }
+    
+    .seo-content h3 {
+        font-size: 1.1rem;
+    }
+    
+    .seo-content p {
+        font-size: 0.8rem;
+        text-align: left;
+    }
+    
+    .keyword-tag {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+}
 
 

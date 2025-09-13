@@ -6,10 +6,79 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// 🔒 PRODUCTION-SAFE LOGGING: Only show detailed logs in development
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const debugLog = (...args) => {
+    if (isDevelopment) {
+        console.log(...args);
+    }
+};
+const safeLog = (...args) => console.log(...args); // Always show important logs
+
+// 🔒 ENHANCED SECURITY: Rate limiting to prevent API abuse
+const rateLimit = new Map();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const MAX_REQUESTS_PER_WINDOW = 100; // 100 requests per 15 minutes per IP
+
+// Rate limiting middleware
+app.use((req, res, next) => {
+    const clientIp = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+    const now = Date.now();
+    
+    // Clean up old entries
+    for (const [ip, data] of rateLimit.entries()) {
+        if (now - data.firstRequest > RATE_LIMIT_WINDOW) {
+            rateLimit.delete(ip);
+        }
+    }
+    
+    // Check current IP
+    const ipData = rateLimit.get(clientIp);
+    if (!ipData) {
+        rateLimit.set(clientIp, { firstRequest: now, count: 1 });
+    } else if (now - ipData.firstRequest > RATE_LIMIT_WINDOW) {
+        rateLimit.set(clientIp, { firstRequest: now, count: 1 });
+    } else {
+        ipData.count++;
+        if (ipData.count > MAX_REQUESTS_PER_WINDOW) {
+            return res.status(429).json({ 
+                error: 'Rate limit exceeded', 
+                message: 'Too many requests. Please try again later.' 
+            });
+        }
+    }
+    next();
+});
+
+// 🔒 ENHANCED SECURITY: Security headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;");
+    next();
+});
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.static('public')); // Serve static files
+
+// 🔒 ENHANCED SECURITY: Validate API keys are present
+if (!process.env.BITQUERY_API_KEY) {
+    console.error('❌ SECURITY ERROR: BITQUERY_API_KEY not found in environment variables');
+    console.error('📝 Please create a .env file with your API keys');
+    process.exit(1);
+}
+
+if (!process.env.COINGECKO_API_KEY) {
+    console.warn('⚠️ WARNING: COINGECKO_API_KEY not found - fallback API will not work');
+}
+
+if (!process.env.SOLANATRACKER_API_KEY) {
+    console.warn('⚠️ WARNING: SOLANATRACKER_API_KEY not found - trending feature will not work');
+}
 
 // BitQuery configuration - API key is now secure on server
 const BITQUERY_ENDPOINT = 'https://streaming.bitquery.io/eap';
@@ -18,6 +87,10 @@ const API_KEY = process.env.BITQUERY_API_KEY; // Secure in .env file
 // CoinGecko configuration - backup API for All coins
 const COINGECKO_ENDPOINT = 'https://api.coingecko.com/api/v3';
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY; // Secure in .env file
+
+// SolanaTracker configuration - for trending tokens
+const SOLANATRACKER_ENDPOINT = 'https://data.solanatracker.io';
+const SOLANATRACKER_API_KEY = process.env.SOLANATRACKER_API_KEY; // Secure in .env file
 
 // API source management
 let currentApiSource = 'auto'; // 'auto', 'bitquery', 'coingecko'
@@ -69,12 +142,99 @@ async function getTokenImage(uri) {
     }
 }
 
+// SolanaTracker service functions
+async function fetchFromSolanaTracker() {
+    try {
+        debugLog('🔥 Fetching trending tokens from SolanaTracker API...');
+        safeLog('📡 Fetching trending tokens from SolanaTracker...');
+        
+        const url = `${SOLANATRACKER_ENDPOINT}/tokens/trending/24h`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'x-api-key': SOLANATRACKER_API_KEY
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`SolanaTracker API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        debugLog(`✅ SolanaTracker returned ${data.length} trending tokens`);
+        safeLog(`✅ SolanaTracker returned ${data.length} trending tokens`);
+        
+        // Transform SolanaTracker data to match our app structure
+        const transformedTokens = data.map((tokenData, index) => {
+            const token = tokenData.token;
+            const pool = tokenData.pools && tokenData.pools.length > 0 ? tokenData.pools[0] : null;
+            const events = tokenData.events || {};
+            
+            // Calculate price change percentage (use 24h if available, fallback to 1h)
+            let changePercent = 0;
+            if (events['24h'] && events['24h'].priceChangePercentage !== undefined) {
+                changePercent = events['24h'].priceChangePercentage;
+            } else if (events['1h'] && events['1h'].priceChangePercentage !== undefined) {
+                changePercent = events['1h'].priceChangePercentage;
+            }
+            
+            const marketCap = pool ? pool.marketCap.usd : 0;
+            const price = pool ? pool.price.usd : 0;
+            
+            return {
+                TokenSupplyUpdate: {
+                    Currency: {
+                        Name: token.name,
+                        Symbol: token.symbol.toUpperCase(),
+                        MintAddress: token.mint,
+                        Decimals: token.decimals || 6,
+                        Uri: null,
+                        Fungible: true,
+                        Native: false,
+                        TokenStandard: 'Token',
+                        ImageUrl: token.image
+                    },
+                    Marketcap: marketCap.toString(),
+                    TotalSupply: '0'
+                },
+                Block: {
+                    Time: new Date().toISOString(),
+                    Height: Date.now()
+                },
+                price_data: {
+                    Trade: {
+                        current_price: price,
+                        price_24h_ago: price / (1 + changePercent / 100)
+                    },
+                    price_change_24h: changePercent
+                }
+            };
+        });
+
+        debugLog(`✅ Transformed ${transformedTokens.length} SolanaTracker trending tokens`);
+        safeLog(`✅ Transformed ${transformedTokens.length} trending tokens`);
+        return {
+            data: {
+                Solana: {
+                    TokenSupplyUpdates: transformedTokens
+                }
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ SolanaTracker API error:', error.message);
+        debugLog('❌ SolanaTracker API error:', error.message);
+        throw error;
+    }
+}
+
 // CoinGecko service functions
 async function fetchFromCoinGecko() {
     try {
-        console.log('🦎 Fetching tokens from CoinGecko API (Solana memecoins)...');
+        debugLog('🦎 Fetching tokens from CoinGecko API (Solana memecoins)...');
+        safeLog('📡 Fetching tokens from backup data source...');
         
-        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h`;
+        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h&include_platform=true`;
         
         const response = await fetch(url, {
             headers: {
@@ -83,78 +243,26 @@ async function fetchFromCoinGecko() {
         });
 
         if (!response.ok) {
-            throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Backup API error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        console.log(`✅ CoinGecko returned ${data.length} tokens`);
+        debugLog(`✅ CoinGecko returned ${data.length} tokens`);
+        safeLog(`✅ Backup source returned ${data.length} tokens`);
         
         // Filter tokens by market cap first
         const filteredTokens = data.filter(token => token.market_cap && token.market_cap >= 5000000);
         
-        // Fetch contract addresses for Solana tokens (with rate limiting)
-        console.log('🔍 Fetching Solana contract addresses...');
-        const tokensWithContracts = [];
-        
-        // Process in smaller batches to avoid rate limits
-        const batchSize = 10;
-        for (let i = 0; i < Math.min(filteredTokens.length, 100); i += batchSize) {
-            const batch = filteredTokens.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (token) => {
-                try {
-                    // Small delay between requests to avoid rate limits
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    
-                    const tokenDetailUrl = `${COINGECKO_ENDPOINT}/coins/${token.id}`;
-                    const tokenResponse = await fetch(tokenDetailUrl, {
-                        headers: {
-                            'x-cg-demo-api-key': COINGECKO_API_KEY
-                        }
-                    });
-                    
-                    if (tokenResponse.ok) {
-                        const tokenDetail = await tokenResponse.json();
-                        // Get Solana contract address if available
-                        const solanaAddress = tokenDetail.platforms?.solana;
-                        
-                        return {
-                            ...token,
-                            solanaContract: solanaAddress
-                        };
-                    } else {
-                        // If detail fetch fails, use the coin ID as fallback
-                        return {
-                            ...token,
-                            solanaContract: null
-                        };
-                    }
-                } catch (error) {
-                    console.warn(`⚠️ Failed to fetch contract for ${token.id}:`, error.message);
-                    return {
-                        ...token,
-                        solanaContract: null
-                    };
-                }
-            });
-            
-            const batchResults = await Promise.all(batchPromises);
-            tokensWithContracts.push(...batchResults);
-            
-            // Longer delay between batches
-            if (i + batchSize < Math.min(filteredTokens.length, 100)) {
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-        }
-        
-        console.log(`✅ Fetched contract addresses for ${tokensWithContracts.length} tokens`);
+        debugLog(`✅ Using platform data from initial API call for ${filteredTokens.length} tokens`);
+        safeLog(`✅ Processing ${filteredTokens.length} tokens from backup source`);
         
         // Transform CoinGecko data to match our app structure
-        const transformedTokens = tokensWithContracts.map((token, index) => ({
+        const transformedTokens = filteredTokens.map((token, index) => ({
             TokenSupplyUpdate: {
                 Currency: {
                     Name: token.name,
                     Symbol: token.symbol.toUpperCase(),
-                    MintAddress: token.solanaContract || `coingecko:${token.id}`, // Use actual contract address if available, fallback to coin ID
+                    MintAddress: token.platforms?.solana || `coingecko:${token.id}`, // Use platform data from initial API call, fallback to coin ID
                     Decimals: 6, // Default for most Solana tokens
                     Uri: null,
                     Fungible: true,
@@ -178,7 +286,8 @@ async function fetchFromCoinGecko() {
             }
         }));
 
-        console.log(`✅ Transformed ${transformedTokens.length} CoinGecko tokens with contract addresses`);
+        debugLog(`✅ Transformed ${transformedTokens.length} CoinGecko tokens with platform data`);
+        safeLog(`✅ Transformed ${transformedTokens.length} tokens from backup source`);
         return {
             data: {
                 Solana: {
@@ -188,7 +297,8 @@ async function fetchFromCoinGecko() {
         };
         
     } catch (error) {
-        console.error('❌ CoinGecko API error:', error.message);
+        console.error('❌ Backup API error:', error.message);
+        debugLog('❌ CoinGecko API error:', error.message);
         throw error;
     }
 }
@@ -198,7 +308,8 @@ async function fetchFromBitQuery(marketCapFilter) {
     const query = isMiddleRange ? MID_RANGE_TOKENS_QUERY : TOP_TOKENS_QUERY;
     const filterDesc = isMiddleRange ? '(3M-10M market cap)' : '(5M+ market cap)';
 
-    console.log(`🔍 Fetching ${filterDesc} tokens from BitQuery...`);
+    debugLog(`🔍 Fetching ${filterDesc} tokens from BitQuery...`);
+    safeLog(`📡 Fetching ${filterDesc} tokens from primary data source...`);
     
     const response = await fetch(BITQUERY_ENDPOINT, {
         method: 'POST',
@@ -213,11 +324,12 @@ async function fetchFromBitQuery(marketCapFilter) {
     });
 
     if (!response.ok) {
-        throw new Error(`BitQuery API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log('✅ Successfully fetched data from BitQuery');
+    debugLog('✅ Successfully fetched data from BitQuery');
+    safeLog('✅ Successfully fetched data from primary source');
     return data;
 }
 
@@ -449,19 +561,33 @@ app.get('/api/tokens', async (req, res) => {
         // Get market cap filter from query parameters
         const marketCapFilter = req.query.filter || 'all';
         const isMiddleRange = marketCapFilter === 'mid-range';
+        const isTrending = marketCapFilter === 'trending';
         
         let data;
         let apiUsed = 'bitquery';
         let fallbackUsed = false;
 
-        // Mid-range: ALWAYS use BitQuery (no CoinGecko backup)
-        if (isMiddleRange) {
-            if (!API_KEY) {
+        // Trending: ALWAYS use SolanaTracker API
+        if (isTrending) {
+            if (!SOLANATRACKER_API_KEY) {
                 return res.status(500).json({ 
-                    error: 'BitQuery API key required for mid-range tokens' 
+                    error: 'SolanaTracker API key required for trending tokens' 
                 });
             }
-            console.log('🔍 Mid-range filter: Using BitQuery only');
+            debugLog('🔥 Trending filter: Using SolanaTracker only');
+            safeLog('🔥 Trending filter: Using SolanaTracker');
+            data = await fetchFromSolanaTracker();
+            apiUsed = 'solanatracker';
+        }
+        // Mid-range: ALWAYS use BitQuery (no CoinGecko backup)
+        else if (isMiddleRange) {
+            if (!API_KEY) {
+                return res.status(500).json({ 
+                    error: 'Primary API key required for mid-range tokens' 
+                });
+            }
+            debugLog('🔍 Mid-range filter: Using BitQuery only');
+            safeLog('🔍 Mid-range filter: Using primary data source');
             data = await fetchFromBitQuery(marketCapFilter);
         } 
         // All coins: Smart API selection with fallback
@@ -480,22 +606,25 @@ app.get('/api/tokens', async (req, res) => {
             // Try BitQuery first (if allowed)
             if (shouldTryBitQuery && API_KEY) {
                 try {
-                    console.log('🚀 Trying BitQuery first...');
+                    debugLog('🚀 Trying BitQuery first...');
+                    safeLog('🚀 Trying primary data source...');
                     data = await fetchFromBitQuery(marketCapFilter);
                     apiUsed = 'bitquery';
                 } catch (bitqueryError) {
-                    console.warn('⚠️ BitQuery failed:', bitqueryError.message);
+                    console.warn('⚠️ Primary API failed:', bitqueryError.message);
+                    debugLog('⚠️ BitQuery failed:', bitqueryError.message);
                     
                     // Only fallback to CoinGecko if we're in auto mode or CoinGecko is forced
                     if (currentApiSource === 'auto' && shouldTryCoinGecko && COINGECKO_API_KEY) {
-                        console.log('🔄 Falling back to CoinGecko...');
+                        debugLog('🔄 Falling back to CoinGecko...');
+                        safeLog('🔄 Falling back to secondary data source...');
                         try {
                             data = await fetchFromCoinGecko();
                             apiUsed = 'coingecko';
                             fallbackUsed = true;
                         } catch (coingeckoError) {
                             console.error('❌ Both APIs failed');
-                            throw new Error(`BitQuery: ${bitqueryError.message}. CoinGecko: ${coingeckoError.message}`);
+                            throw new Error(`Primary API: ${bitqueryError.message}. Backup API: ${coingeckoError.message}`);
                         }
                     } else {
                         throw bitqueryError;
@@ -504,7 +633,8 @@ app.get('/api/tokens', async (req, res) => {
             }
             // Try CoinGecko first (if forced)
             else if (shouldTryCoinGecko && COINGECKO_API_KEY) {
-                console.log('🦎 Using CoinGecko (manual selection)');
+                debugLog('🦎 Using CoinGecko (manual selection)');
+                safeLog('📊 Using secondary data source (manual selection)');
                 data = await fetchFromCoinGecko();
                 apiUsed = 'coingecko';
             }
@@ -516,9 +646,10 @@ app.get('/api/tokens', async (req, res) => {
         // Track which API was used
         lastApiUsed = apiUsed;
         
-        // Process tokens to add images (only for BitQuery tokens, CoinGecko already has images)
+        // Process tokens to add images (only for BitQuery tokens, CoinGecko and SolanaTracker already have images)
         if (data.data && data.data.Solana && data.data.Solana.TokenSupplyUpdates && apiUsed === 'bitquery') {
-            console.log('🖼️ Processing token images from BitQuery...');
+            debugLog('🖼️ Processing token images from BitQuery...');
+            safeLog('🖼️ Processing token images from primary source...');
             
             const tokensWithImages = await Promise.all(
                 data.data.Solana.TokenSupplyUpdates.map(async (tokenData) => {
@@ -557,17 +688,22 @@ app.get('/api/tokens', async (req, res) => {
             data.data.Solana.TokenSupplyUpdates = tokensWithImages;
             console.log(`✅ Processed ${tokensWithImages.length} tokens with image data`);
         } else if (apiUsed === 'coingecko') {
-            console.log('✅ CoinGecko tokens already include image URLs');
+            debugLog('✅ CoinGecko tokens already include image URLs');
+            safeLog('✅ Secondary source tokens already include image URLs');
+        } else if (apiUsed === 'solanatracker') {
+            debugLog('✅ SolanaTracker tokens already include image URLs');
+            safeLog('✅ SolanaTracker tokens already include image URLs');
         }
         
-        // Return processed data to frontend with API source info
+        // Return processed data to frontend (API provider info sanitized for security)
         const response = {
             ...data,
             apiInfo: {
-                source: apiUsed,
+                version: apiUsed === 'bitquery' ? 'V1' : (apiUsed === 'solanatracker' ? 'Trending' : 'V2'),
                 fallbackUsed: fallbackUsed,
-                currentPreference: currentApiSource,
-                isMiddleRange: isMiddleRange
+                isMiddleRange: isMiddleRange,
+                isTrending: isTrending
+                // Removed: source, currentPreference (security enhancement)
             }
         };
         
@@ -607,13 +743,13 @@ app.post('/api/set-source', (req, res) => {
         // Validate API availability
         if (source === 'bitquery' && !API_KEY) {
             return res.status(400).json({
-                error: 'BitQuery API key not configured'
+                error: 'Primary API key not configured'
             });
         }
         
         if (source === 'coingecko' && !COINGECKO_API_KEY) {
             return res.status(400).json({
-                error: 'CoinGecko API key not configured'
+                error: 'Backup API key not configured'
             });
         }
         
@@ -641,7 +777,8 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         apis: {
             bitquery: !!API_KEY,
-            coingecko: !!COINGECKO_API_KEY
+            coingecko: !!COINGECKO_API_KEY,
+            solanatracker: !!SOLANATRACKER_API_KEY
         },
         currentSource: currentApiSource,
         lastUsed: lastApiUsed
@@ -650,10 +787,19 @@ app.get('/api/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🔒 Secure API server running on http://localhost:${PORT}`);
-    console.log(`🛡️ API keys safely hidden in .env file`);
-    console.log(`🔍 BitQuery API: ${API_KEY ? '✅ Configured' : '❌ Missing'}`);
-    console.log(`🦎 CoinGecko API: ${COINGECKO_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    console.log(`🔒 ENHANCED SECURE API server running on http://localhost:${PORT}`);
+    console.log(`🛡️ Security Features Enabled:`);
+    console.log(`   ✅ API keys secured in .env file`);
+    console.log(`   ✅ Rate limiting (100 req/15min per IP)`);
+    console.log(`   ✅ Security headers (XSS, CSRF, etc.)`);
+    console.log(`   ✅ Input validation & sanitization`);
+    console.log(`   ✅ Request size limits (10MB)`);
+    debugLog(`🔍 BitQuery API: ${API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    debugLog(`🦎 CoinGecko API: ${COINGECKO_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    debugLog(`🔥 SolanaTracker API: ${SOLANATRACKER_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    safeLog(`📡 Primary API: ${API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    safeLog(`📡 Backup API: ${COINGECKO_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    safeLog(`📡 Trending API: ${SOLANATRACKER_API_KEY ? '✅ Configured' : '❌ Missing'}`);
     console.log(`🚀 Current API source: ${currentApiSource}`);
     console.log(`🌐 Frontend endpoints:`);
     console.log(`   📊 Get tokens: http://localhost:${PORT}/api/tokens`);

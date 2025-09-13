@@ -73,8 +73,15 @@ const mockTokens = [
 
 async function fetchTokens(marketCapFilter = 'all') {
     try {
-        const filterDesc = marketCapFilter === 'mid-range' ? '3M-10M market cap' : '5M+ market cap';
-        console.log(`🔒 Fetching tokens (${filterDesc}) from secure backend...`);
+        let filterDesc;
+        if (marketCapFilter === 'mid-range') {
+            filterDesc = '3M-10M market cap';
+        } else if (marketCapFilter === 'trending') {
+            filterDesc = 'trending tokens (24h)';
+        } else {
+            filterDesc = '5M+ market cap';
+        }
+        // 🔒 PRODUCTION: Removed console logging for security
         
         // 🛡️ SECURE: Call our own API endpoint (API key is hidden on server)
         const url = marketCapFilter === 'all' ? '/api/tokens' : `/api/tokens?filter=${marketCapFilter}`;
@@ -91,11 +98,11 @@ async function fetchTokens(marketCapFilter = 'all') {
         }
 
         const data = await response.json();
-        console.log('✅ Secure API Response received');
+        // ✅ Response received (logging removed for production security)
         
         // Handle new API response structure with apiInfo
         if (data.apiInfo) {
-            console.log(`📡 API Source: ${data.apiInfo.source}${data.apiInfo.fallbackUsed ? ' (fallback)' : ''}`);
+            // 📡 API source information processed (logging removed for production security)
             updateApiStatus(data.apiInfo);
         }
         
@@ -113,7 +120,7 @@ async function fetchTokens(marketCapFilter = 'all') {
         
         // Transform the API data with real price changes
         const tokens = data.data?.Solana?.TokenSupplyUpdates || [];
-        console.log('Parsed tokens count:', tokens.length);
+        // Token count processed (logging removed for production security)
         
         return tokens.map((tokenData, index) => {
             const supplyUpdate = tokenData.TokenSupplyUpdate;
@@ -299,8 +306,19 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
         percentageDisplay = `<span class="${token.isPositive ? 'positive' : 'negative'}">${sign}${token.changePercent.toFixed(2)}%</span>`;
     }
 
-    // Create image element with fallback and rank-based sizing
-    const imageClass = marketCapFilter === 'all' && index >= 8 ? 'tile-image tile-image-small' : 'tile-image';
+    // Create image element with fallback and size-based sizing
+    // Calculate approximate box size (assuming each grid unit is ~56px)
+    const approximateBoxWidth = colSpan * 56;
+    const approximateBoxHeight = rowSpan * 56;
+    const minBoxDimension = Math.min(approximateBoxWidth, approximateBoxHeight);
+    
+    let imageClass = 'tile-image';
+    if (minBoxDimension <= 112) {
+        imageClass = 'tile-image tile-image-18px';
+    } else if (marketCapFilter === 'all' && index >= 8) {
+        imageClass = 'tile-image tile-image-small';
+    }
+    
     const imageElement = token.imageUrl ? 
         `<img src="${token.imageUrl}" alt="${token.symbol}" class="${imageClass}" onerror="this.style.display='none'">` : 
         '';
@@ -549,84 +567,35 @@ function showToast(message) {
     }, 2000);
 }
 
-// API source management functions
-async function getApiStatus() {
-    try {
-        const response = await fetch('/api/source');
-        if (response.ok) {
-            return await response.json();
-        }
-    } catch (error) {
-        console.warn('Failed to get API status:', error);
-    }
-    return null;
-}
-
-async function setApiSource(source) {
-    try {
-        const response = await fetch('/api/set-source', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ source })
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ API source changed:', result);
-            showToast(result.message || `Switched to ${source} API`);
-            updateApiSourceSelector(source);
-            return true;
-        } else {
-            const error = await response.json();
-            console.error('❌ Failed to change API source:', error);
-            showToast(`Failed to switch API: ${error.error}`);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ API source change error:', error);
-        showToast('Failed to change API source');
-        return false;
-    }
-}
 
 function updateApiStatus(apiInfo) {
     const statusElement = document.getElementById('api-status');
-    const sourceElement = document.getElementById('api-source');
     
-    if (statusElement && sourceElement) {
+    if (statusElement) {
         let statusText = '';
         let statusClass = '';
         
-        if (apiInfo.isMiddleRange) {
+        if (apiInfo.isTrending) {
+            statusText = 'Trending';
+            statusClass = 'trending';
+        } else if (apiInfo.isMiddleRange) {
             statusText = 'V1';
-            statusClass = 'bitquery';
+            statusClass = 'primary';
         } else {
             if (apiInfo.fallbackUsed) {
-                const versionText = apiInfo.source === 'bitquery' ? 'V1' : 'V2';
-                statusText = `${versionText} (fallback)`;
+                statusText = `${apiInfo.version} (backup)`;
                 statusClass = 'fallback';
             } else {
-                statusText = apiInfo.source === 'bitquery' ? 'V1' : 'V2';
-                statusClass = apiInfo.source;
+                statusText = apiInfo.version;
+                statusClass = 'primary';
             }
         }
         
         statusElement.textContent = statusText;
         statusElement.className = `api-status ${statusClass}`;
-        
-        // Update source selector
-        updateApiSourceSelector(apiInfo.currentPreference);
     }
 }
 
-function updateApiSourceSelector(currentSource) {
-    const selector = document.getElementById('api-source-selector');
-    if (selector) {
-        selector.value = currentSource;
-    }
-}
 
 async function loadTokens(bypassCooldown = false, marketCapFilter = 'all') {
     const currentTime = Date.now();
@@ -802,42 +771,23 @@ function populateTable(tokens) {
 
 function changeMarketCapFilter(filter) {
     currentMarketCapFilter = filter;
-    const filterDesc = filter === 'mid-range' ? '3M-10M market cap' : '5M+ market cap';
+    let filterDesc;
+    if (filter === 'mid-range') {
+        filterDesc = '3M-10M market cap';
+    } else if (filter === 'trending') {
+        filterDesc = 'trending tokens (24h)';
+    } else {
+        filterDesc = '5M+ market cap';
+    }
     showToast(`Switching to ${filterDesc} view...`);
     
     // Load tokens with new filter, bypassing cooldown for filter changes
     loadTokens(true, filter);
 }
 
-async function handleApiSourceChange(source) {
-    // Show notification about mid-range limitation
-    if (currentMarketCapFilter === 'mid-range' && source !== 'auto') {
-        showToast('Mid-range coins always use V1');
-        updateApiSourceSelector('auto'); // Reset selector
-        return;
-    }
-    
-    const success = await setApiSource(source);
-    if (success) {
-        // Refresh tokens with new API source
-        loadTokens(true, currentMarketCapFilter);
-    } else {
-        // Reset selector on failure
-        const apiStatus = await getApiStatus();
-        if (apiStatus) {
-            updateApiSourceSelector(apiStatus.currentSource);
-        }
-    }
-}
 
-// Load tokens and API status when page loads
+// Load tokens when page loads
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize API status
-    const apiStatus = await getApiStatus();
-    if (apiStatus) {
-        updateApiSourceSelector(apiStatus.currentSource);
-    }
-    
     // Load tokens (bypass cooldown on first load)
     loadTokens(true);
 });

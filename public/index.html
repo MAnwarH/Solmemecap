@@ -3,11 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meme360 - Top Solana Memecoins</title>
+    <title>Top Solana Meme Coins by Market Cap - Live Prices & Rankings | SolMemeCap</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Track the top Solana meme coins by market cap with real-time prices, 24h changes, and live rankings. Discover trending Solana memecoins with detailed market data and analytics.">
+    <meta name="keywords" content="solana meme coins, solana memecoins, solana crypto, meme coins market cap, solana tokens, crypto memes, solana blockchain, meme coin prices, solana DeFi">
+    <meta name="author" content="SolMemeCap">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Top Solana Meme Coins by Market Cap - Live Rankings">
+    <meta property="og:description" content="Track the top Solana meme coins with real-time market data, prices, and 24h changes. Complete rankings and analytics for Solana memecoins.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://solmemecap.vercel.app">
+    <meta property="og:image" content="https://solmemecap.vercel.app/og-image.png">
+    <meta property="og:site_name" content="SolMemeCap">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Top Solana Meme Coins by Market Cap">
+    <meta name="twitter:description" content="Real-time rankings and analytics for Solana meme coins with live market data and price tracking.">
+    <meta name="twitter:image" content="https://solmemecap.vercel.app/og-image.png">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://solmemecap.vercel.app">
     
     <!-- 3D Memecoin Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="shortcut icon" href="/favicon.svg">
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "SolMemeCap",
+      "description": "Top Solana meme coins ranked by market cap with real-time data",
+      "url": "https://solmemecap.vercel.app",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://solmemecap.vercel.app/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
     
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,14 +62,14 @@
     <div class="container">
         <header class="header">
             <div class="logo">
-                <h1 class="logo-text">
+                <h2 class="logo-text">
                     <div class="coin-3d">
                         <div class="coin-face front"></div>
                         <div class="coin-face back"></div>
                     </div>
-                    Meme360
-                </h1>
-                <p class="tagline">Top 100 Solana Memecoins - Real 24h Changes</p>
+                    solmemecap
+                </h2>
+                <h1 class="main-heading">Top Solana Meme Coins by marketcap</h1>
             </div>
             
             <!-- First Banner Ad -->
@@ -78,13 +120,7 @@
                     <select id="market-cap-dropdown" onchange="changeMarketCapFilter(this.value)">
                         <option value="all">🚀 All Coins (5M+)</option>
                         <option value="mid-range">💎 Mid-Range (3M-10M)</option>
-                    </select>
-                </div>
-                <div class="api-source-filter">
-                    <select id="api-source-selector" onchange="handleApiSourceChange(this.value)">
-                        <option value="auto">🤖 Auto (Smart Fallback)</option>
-                        <option value="bitquery">🔍 V1</option>
-                        <option value="coingecko">🦎 V2</option>
+                        <option value="trending">🔥 Trending (24h)</option>
                     </select>
                 </div>
                 <div class="layout-selector">
@@ -126,6 +162,24 @@
                 <!-- Table rows will be populated here -->
             </tbody>
         </table>
+        
+        <!-- SEO Content Footer -->
+        <footer class="seo-footer">
+            <div class="seo-content">
+                <h3>About Solana Meme Coins</h3>
+                <p>SolMemeCap provides real-time tracking of the top <strong>Solana meme coins</strong> ranked by market capitalization. Our platform offers comprehensive data on <strong>Solana memecoins</strong> including live prices, 24-hour price changes, market cap rankings, and detailed token analytics.</p>
+                
+                <p>Stay updated with the latest trends in the <strong>Solana crypto</strong> ecosystem and discover emerging <strong>meme coins</strong> with high potential. Our advanced filtering system allows you to explore coins by market cap ranges, from established tokens to emerging gems in the <strong>Solana blockchain</strong> space.</p>
+                
+                <div class="seo-keywords">
+                    <span class="keyword-tag">Solana Meme Coins</span>
+                    <span class="keyword-tag">Solana Memecoins</span>
+                    <span class="keyword-tag">Market Cap Rankings</span>
+                    <span class="keyword-tag">Crypto Analytics</span>
+                    <span class="keyword-tag">Solana DeFi</span>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="script.js"></script>
