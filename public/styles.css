@@ -1594,4 +1594,54 @@ body {
     }
 }
 
+/* Advertise CTA Button */
+.advertise-cta {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.advertise-button {
+    display: inline-block;
+    background: linear-gradient(45deg, #f9ca24, #ff6b6b);
+    color: #000;
+    text-decoration: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(249, 202, 36, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.advertise-button:hover {
+    background: linear-gradient(45deg, #ff6b6b, #f9ca24);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(249, 202, 36, 0.5);
+    color: #000;
+}
+
+.advertise-subtitle {
+    margin-top: 8px;
+    color: #aaaaaa;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Mobile responsiveness for Advertise button */
+@media (max-width: 768px) {
+    .advertise-button {
+        font-size: 0.9rem;
+        padding: 10px 20px;
+    }
+
+    .advertise-subtitle {
+        font-size: 0.75rem;
+    }
+}
+
 
