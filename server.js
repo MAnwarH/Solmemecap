@@ -15,36 +15,39 @@ const debugLog = (...args) => {
 };
 const safeLog = (...args) => console.log(...args); // Always show important logs
 
-// 🔒 ENHANCED SECURITY: Rate limiting to prevent API abuse
+// 🔒 ENHANCED SECURITY: Smart rate limiting to prevent API abuse
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const MAX_REQUESTS_PER_WINDOW = 100; // 100 requests per 15 minutes per IP
+const MAX_REQUESTS_PER_WINDOW = 500; // Increased: 500 requests per 15 minutes per IP (most will be cached)
 
-// Rate limiting middleware
+// Smart rate limiting middleware - more lenient for endpoints with caching
 app.use((req, res, next) => {
     const clientIp = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
     const now = Date.now();
-    
-    // Clean up old entries
-    for (const [ip, data] of rateLimit.entries()) {
-        if (now - data.firstRequest > RATE_LIMIT_WINDOW) {
-            rateLimit.delete(ip);
+
+    // Skip rate limiting for static files (HTML, CSS, JS, images)
+    if (req.path.startsWith('/api/')) {
+        // Clean up old entries
+        for (const [ip, data] of rateLimit.entries()) {
+            if (now - data.firstRequest > RATE_LIMIT_WINDOW) {
+                rateLimit.delete(ip);
+            }
         }
-    }
-    
-    // Check current IP
-    const ipData = rateLimit.get(clientIp);
-    if (!ipData) {
-        rateLimit.set(clientIp, { firstRequest: now, count: 1 });
-    } else if (now - ipData.firstRequest > RATE_LIMIT_WINDOW) {
-        rateLimit.set(clientIp, { firstRequest: now, count: 1 });
-    } else {
-        ipData.count++;
-        if (ipData.count > MAX_REQUESTS_PER_WINDOW) {
-            return res.status(429).json({ 
-                error: 'Rate limit exceeded', 
-                message: 'Too many requests. Please try again later.' 
-            });
+
+        // Check current IP
+        const ipData = rateLimit.get(clientIp);
+        if (!ipData) {
+            rateLimit.set(clientIp, { firstRequest: now, count: 1 });
+        } else if (now - ipData.firstRequest > RATE_LIMIT_WINDOW) {
+            rateLimit.set(clientIp, { firstRequest: now, count: 1 });
+        } else {
+            ipData.count++;
+            if (ipData.count > MAX_REQUESTS_PER_WINDOW) {
+                return res.status(429).json({
+                    error: 'Rate limit exceeded',
+                    message: 'Too many requests. Please try again later.'
+                });
+            }
         }
     }
     next();
@@ -80,6 +83,10 @@ if (!process.env.SOLANATRACKER_API_KEY) {
     console.warn('⚠️ WARNING: SOLANATRACKER_API_KEY not found - trending feature will not work');
 }
 
+if (!process.env.COINMARKETCAP_API_KEY) {
+    console.warn('⚠️ WARNING: COINMARKETCAP_API_KEY not found - Solana price display will not work');
+}
+
 // BitQuery configuration - API key is now secure on server
 const BITQUERY_ENDPOINT = 'https://streaming.bitquery.io/eap';
 const API_KEY = process.env.BITQUERY_API_KEY; // Secure in .env file
@@ -92,6 +99,32 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY; // Secure in .env file
 const SOLANATRACKER_ENDPOINT = 'https://data.solanatracker.io';
 const SOLANATRACKER_API_KEY = process.env.SOLANATRACKER_API_KEY; // Secure in .env file
 
+// CoinMarketCap configuration - for Solana price display
+const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
+const CACHE_DURATION = 60 * 1000; // Cache for 1 minute (60,000ms)
+let solanaPriceCache = {
+    price: null,
+    lastUpdate: null
+};
+
+// BitQuery tokens cache - separate cache for each filter
+let tokensCacheAll = {
+    data: null,
+    lastUpdate: null
+};
+let tokensCacheMidRange = {
+    data: null,
+    lastUpdate: null
+};
+let tokensCacheTrending = {
+    data: null,
+    lastUpdate: null
+};
+
+// DexScreener cache for sponsored coins (5-minute cache to minimize API calls)
+const DEXSCREENER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (300,000ms)
+let dexScreenerCache = new Map(); // address -> {data, lastUpdate}
+
 // API source management
 let currentApiSource = 'auto'; // 'auto', 'bitquery', 'coingecko'
 let lastApiUsed = 'bitquery'; // Track which API was last used
@@ -99,40 +132,129 @@ let lastApiUsed = 'bitquery'; // Track which API was last used
 // Image cache to avoid refetching same URIs
 const imageCache = new Map();
 
+// Helper function to get cached tokens data
+function getCachedTokens(filter) {
+    const now = Date.now();
+    let cache;
+
+    // Select appropriate cache based on filter
+    if (filter === 'mid-range') {
+        cache = tokensCacheMidRange;
+    } else if (filter === 'trending') {
+        cache = tokensCacheTrending;
+    } else {
+        cache = tokensCacheAll;
+    }
+
+    // Check if cache is valid (less than 1 minute old)
+    if (cache.data && cache.lastUpdate && (now - cache.lastUpdate < CACHE_DURATION)) {
+        const cacheAge = Math.floor((now - cache.lastUpdate) / 1000);
+        console.log(`📦 Serving cached tokens for '${filter}' filter (age: ${cacheAge}s)`);
+        return cache.data;
+    }
+
+    return null; // Cache expired or doesn't exist
+}
+
+// Helper function to set cached tokens data
+function setCachedTokens(filter, data) {
+    const cacheObj = {
+        data: data,
+        lastUpdate: Date.now()
+    };
+
+    // Store in appropriate cache based on filter
+    if (filter === 'mid-range') {
+        tokensCacheMidRange = cacheObj;
+        console.log(`💾 Cached tokens for 'mid-range' filter`);
+    } else if (filter === 'trending') {
+        tokensCacheTrending = cacheObj;
+        console.log(`💾 Cached tokens for 'trending' filter`);
+    } else {
+        tokensCacheAll = cacheObj;
+        console.log(`💾 Cached tokens for 'all' filter`);
+    }
+}
+
+// Function to fetch Solana price from CoinMarketCap (on-demand with 1-minute cache)
+async function fetchSolanaPrice() {
+    try {
+        // Check if cache is still valid (less than 1 minute old)
+        const now = Date.now();
+        if (solanaPriceCache.price && solanaPriceCache.lastUpdate && (now - solanaPriceCache.lastUpdate < CACHE_DURATION)) {
+            console.log(`💰 Serving cached Solana price: $${solanaPriceCache.price.toFixed(2)} (age: ${Math.floor((now - solanaPriceCache.lastUpdate) / 1000)}s)`);
+            return solanaPriceCache.price;
+        }
+
+        // Cache expired or doesn't exist, fetch fresh data
+        console.log(`🔄 Fetching fresh Solana price from CoinMarketCap...`);
+        const response = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=SOL', {
+            headers: {
+                'X-CMC_PRO_API_KEY': COINMARKETCAP_API_KEY,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`CoinMarketCap API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const price = data.data.SOL.quote.USD.price;
+
+        // Update cache
+        solanaPriceCache = {
+            price: price,
+            lastUpdate: Date.now()
+        };
+
+        console.log(`💰 Updated Solana price: $${price.toFixed(2)}`);
+        return price;
+    } catch (error) {
+        console.error('❌ Failed to fetch Solana price:', error.message);
+        // Return cached price if available, even if expired
+        if (solanaPriceCache.price) {
+            console.log(`⚠️ Returning stale cached price: $${solanaPriceCache.price.toFixed(2)}`);
+            return solanaPriceCache.price;
+        }
+        return null;
+    }
+}
+
 // Function to fetch token image from metadata URI
 async function getTokenImage(uri) {
     try {
         if (!uri) return null;
-        
+
         // Check cache first
         if (imageCache.has(uri)) {
             return imageCache.get(uri);
         }
-        
+
         // Set timeout for metadata fetch
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        const response = await fetch(uri, { 
+
+        const response = await fetch(uri, {
             signal: controller.signal,
             headers: {
                 'User-Agent': 'Meme360-Bot/1.0'
             }
         });
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
             console.warn(`Failed to fetch metadata from ${uri}: ${response.status}`);
             imageCache.set(uri, null);
             return null;
         }
-        
+
         const metadata = await response.json();
         const imageUrl = metadata.image || metadata.logo || metadata.icon || null;
-        
+
         // Cache the result
         imageCache.set(uri, imageUrl);
-        
+
         return imageUrl;
     } catch (error) {
         console.warn(`Error fetching image from ${uri}:`, error.message);
@@ -147,9 +269,9 @@ async function fetchFromSolanaTracker() {
     try {
         debugLog('🔥 Fetching trending tokens from SolanaTracker API...');
         safeLog('📡 Fetching trending tokens from SolanaTracker...');
-        
+
         const url = `${SOLANATRACKER_ENDPOINT}/tokens/trending/24h`;
-        
+
         const response = await fetch(url, {
             headers: {
                 'x-api-key': SOLANATRACKER_API_KEY
@@ -163,13 +285,13 @@ async function fetchFromSolanaTracker() {
         const data = await response.json();
         debugLog(`✅ SolanaTracker returned ${data.length} trending tokens`);
         safeLog(`✅ SolanaTracker returned ${data.length} trending tokens`);
-        
+
         // Transform SolanaTracker data to match our app structure
         const transformedTokens = data.map((tokenData, index) => {
             const token = tokenData.token;
             const pool = tokenData.pools && tokenData.pools.length > 0 ? tokenData.pools[0] : null;
             const events = tokenData.events || {};
-            
+
             // Calculate price change percentage (use 24h if available, fallback to 1h)
             let changePercent = 0;
             if (events['24h'] && events['24h'].priceChangePercentage !== undefined) {
@@ -177,10 +299,10 @@ async function fetchFromSolanaTracker() {
             } else if (events['1h'] && events['1h'].priceChangePercentage !== undefined) {
                 changePercent = events['1h'].priceChangePercentage;
             }
-            
+
             const marketCap = pool ? pool.marketCap.usd : 0;
             const price = pool ? pool.price.usd : 0;
-            
+
             return {
                 TokenSupplyUpdate: {
                     Currency: {
@@ -220,7 +342,7 @@ async function fetchFromSolanaTracker() {
                 }
             }
         };
-        
+
     } catch (error) {
         console.error('❌ SolanaTracker API error:', error.message);
         debugLog('❌ SolanaTracker API error:', error.message);
@@ -233,9 +355,9 @@ async function fetchFromCoinGecko() {
     try {
         debugLog('🦎 Fetching tokens from CoinGecko API (Solana memecoins)...');
         safeLog('📡 Fetching tokens from backup data source...');
-        
+
         const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h&include_platform=true`;
-        
+
         const response = await fetch(url, {
             headers: {
                 'x-cg-demo-api-key': COINGECKO_API_KEY
@@ -249,15 +371,15 @@ async function fetchFromCoinGecko() {
         const data = await response.json();
         debugLog(`✅ CoinGecko returned ${data.length} tokens`);
         safeLog(`✅ Backup source returned ${data.length} tokens`);
-        
-        // Filter tokens by market cap first
-        const filteredTokens = data.filter(token => token.market_cap && token.market_cap >= 5000000);
-        
-        debugLog(`✅ Using platform data from initial API call for ${filteredTokens.length} tokens`);
-        safeLog(`✅ Processing ${filteredTokens.length} tokens from backup source`);
-        
+
+        // No market cap filtering - show top 100 memecoins by CoinGecko ranking
+        const tokensToProcess = data;
+
+        debugLog(`✅ Processing all ${tokensToProcess.length} tokens from CoinGecko`);
+        safeLog(`✅ Processing ${tokensToProcess.length} tokens from backup source`);
+
         // Transform CoinGecko data to match our app structure
-        const transformedTokens = filteredTokens.map((token, index) => ({
+        const transformedTokens = tokensToProcess.map((token, index) => ({
             TokenSupplyUpdate: {
                 Currency: {
                     Name: token.name,
@@ -295,7 +417,7 @@ async function fetchFromCoinGecko() {
                 }
             }
         };
-        
+
     } catch (error) {
         console.error('❌ Backup API error:', error.message);
         debugLog('❌ CoinGecko API error:', error.message);
@@ -310,7 +432,7 @@ async function fetchFromBitQuery(marketCapFilter) {
 
     debugLog(`🔍 Fetching ${filterDesc} tokens from BitQuery...`);
     safeLog(`📡 Fetching ${filterDesc} tokens from primary data source...`);
-    
+
     const response = await fetch(BITQUERY_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -370,7 +492,7 @@ const TOP_TOKENS_QUERY = `{
               "suPer8CPwxoJPQ7zksGMwFvjBQhjAHwUMmPV4FVatBw",
               "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn",
               "jucy5XJ76pHVvtPZb5TKRcGQExkwit2P5s4vY8UzmpC",
-              "BnSOL6DYAJ3tBrHMZ8zqVDJwgpZPEnYVHnP8nCYJ7uAP",
+              "BnSOL6DYAJ3tBrHMZ8zqVD4KCoNkY11McCe8BenwNYB",
               "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
               "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
               "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
@@ -553,8 +675,8 @@ app.get('/api/tokens', async (req, res) => {
     try {
         // Validate API keys exist
         if (!API_KEY && !COINGECKO_API_KEY) {
-            return res.status(500).json({ 
-                error: 'No API keys configured. Please check your .env file.' 
+            return res.status(500).json({
+                error: 'No API keys configured. Please check your .env file.'
             });
         }
 
@@ -562,7 +684,14 @@ app.get('/api/tokens', async (req, res) => {
         const marketCapFilter = req.query.filter || 'all';
         const isMiddleRange = marketCapFilter === 'mid-range';
         const isTrending = marketCapFilter === 'trending';
-        
+
+        // Check cache first
+        const cachedData = getCachedTokens(marketCapFilter);
+        if (cachedData) {
+            // Return cached data immediately
+            return res.json(cachedData);
+        }
+
         let data;
         let apiUsed = 'bitquery';
         let fallbackUsed = false;
@@ -570,8 +699,8 @@ app.get('/api/tokens', async (req, res) => {
         // Trending: ALWAYS use SolanaTracker API
         if (isTrending) {
             if (!SOLANATRACKER_API_KEY) {
-                return res.status(500).json({ 
-                    error: 'SolanaTracker API key required for trending tokens' 
+                return res.status(500).json({
+                    error: 'SolanaTracker API key required for trending tokens'
                 });
             }
             debugLog('🔥 Trending filter: Using SolanaTracker only');
@@ -582,81 +711,104 @@ app.get('/api/tokens', async (req, res) => {
         // Mid-range: ALWAYS use BitQuery (no CoinGecko backup)
         else if (isMiddleRange) {
             if (!API_KEY) {
-                return res.status(500).json({ 
-                    error: 'Primary API key required for mid-range tokens' 
+                return res.status(500).json({
+                    error: 'Primary API key required for mid-range tokens'
                 });
             }
             debugLog('🔍 Mid-range filter: Using BitQuery only');
             safeLog('🔍 Mid-range filter: Using primary data source');
             data = await fetchFromBitQuery(marketCapFilter);
-        } 
-        // All coins: Smart API selection with fallback
+        }
+        // All coins: FORCE CoinGecko API (as per user request)
         else {
-            // Determine which API to try first
-            let shouldTryBitQuery = true;
-            let shouldTryCoinGecko = true;
-
-            if (currentApiSource === 'bitquery') {
-                shouldTryCoinGecko = false;
-            } else if (currentApiSource === 'coingecko') {
-                shouldTryBitQuery = false;
+            if (!COINGECKO_API_KEY) {
+                return res.status(500).json({
+                    error: 'CoinGecko API key required for All coins view'
+                });
             }
-            // 'auto' mode tries BitQuery first, then CoinGecko
-
-            // Try BitQuery first (if allowed)
-            if (shouldTryBitQuery && API_KEY) {
-                try {
-                    debugLog('🚀 Trying BitQuery first...');
-                    safeLog('🚀 Trying primary data source...');
-                    data = await fetchFromBitQuery(marketCapFilter);
-                    apiUsed = 'bitquery';
-                } catch (bitqueryError) {
-                    console.warn('⚠️ Primary API failed:', bitqueryError.message);
-                    debugLog('⚠️ BitQuery failed:', bitqueryError.message);
-                    
-                    // Only fallback to CoinGecko if we're in auto mode or CoinGecko is forced
-                    if (currentApiSource === 'auto' && shouldTryCoinGecko && COINGECKO_API_KEY) {
-                        debugLog('🔄 Falling back to CoinGecko...');
-                        safeLog('🔄 Falling back to secondary data source...');
-                        try {
-                            data = await fetchFromCoinGecko();
-                            apiUsed = 'coingecko';
-                            fallbackUsed = true;
-                        } catch (coingeckoError) {
-                            console.error('❌ Both APIs failed');
-                            throw new Error(`Primary API: ${bitqueryError.message}. Backup API: ${coingeckoError.message}`);
-                        }
-                    } else {
-                        throw bitqueryError;
-                    }
-                }
-            }
-            // Try CoinGecko first (if forced)
-            else if (shouldTryCoinGecko && COINGECKO_API_KEY) {
-                debugLog('🦎 Using CoinGecko (manual selection)');
-                safeLog('📊 Using secondary data source (manual selection)');
-                data = await fetchFromCoinGecko();
-                apiUsed = 'coingecko';
-            }
-            else {
-                throw new Error('No available API source for the current configuration');
-            }
+            debugLog('🦎 Using CoinGecko for All coins (forced by configuration)');
+            safeLog('📊 Using CoinGecko data source for All coins');
+            data = await fetchFromCoinGecko();
+            apiUsed = 'coingecko';
         }
 
         // Track which API was used
         lastApiUsed = apiUsed;
-        
+
+        // Filter out tokens with both current_price and price_24h_ago as 0 (all APIs)
+        if (data.data && data.data.Solana && data.data.Solana.TokenSupplyUpdates) {
+            const originalCount = data.data.Solana.TokenSupplyUpdates.length;
+            const filteredTokensList = []; // Collect filtered tokens for detailed logging
+
+            data.data.Solana.TokenSupplyUpdates = data.data.Solana.TokenSupplyUpdates.filter(tokenData => {
+                const priceData = tokenData.price_data;
+                if (priceData && priceData.Trade) {
+                    const currentPrice = priceData.Trade.current_price;
+                    const price24hAgo = priceData.Trade.price_24h_ago;
+
+                    // Convert null/undefined to 0 for comparison
+                    const currentPriceValue = Number(currentPrice) || 0;
+                    const price24hAgoValue = Number(price24hAgo) || 0;
+
+                    // Check if token should be filtered
+                    const shouldFilter = (currentPriceValue === 0 || price24hAgoValue === 0);
+
+                    if (shouldFilter) {
+                        const symbol = tokenData.TokenSupplyUpdate?.Currency?.Symbol || 'Unknown';
+                        const name = tokenData.TokenSupplyUpdate?.Currency?.Name || 'Unknown';
+                        const marketCap = tokenData.TokenSupplyUpdate?.Marketcap || 'Unknown';
+
+                        // Add to filtered list for detailed console display
+                        filteredTokensList.push({
+                            symbol: symbol,
+                            name: name,
+                            marketCap: marketCap,
+                            currentPrice: currentPrice,
+                            price24hAgo: price24hAgo,
+                            reason: currentPriceValue === 0 ? 'current_price = 0' : 'price_24h_ago = 0'
+                        });
+
+                        debugLog(`🚫 Filtering out ${symbol}: current_price=${currentPrice}, price_24h_ago=${price24hAgo}`);
+                    }
+
+                    // Filter out tokens where either current_price is 0 OR price_24h_ago is 0
+                    return !shouldFilter;
+                }
+                return true; // Keep tokens without price data (shouldn't happen but safety check)
+            });
+            const filteredCount = data.data.Solana.TokenSupplyUpdates.length;
+
+            if (originalCount !== filteredCount) {
+                debugLog(`🔍 Price filter (${apiUsed}): Removed ${originalCount - filteredCount} tokens with zero prices`);
+                safeLog(`🔍 Filtered out ${originalCount - filteredCount} tokens with invalid price data`);
+
+                // Display detailed list of filtered tokens in console
+                console.log('\n' + '='.repeat(80));
+                console.log('🚫 FILTERED TOKENS WITH ZERO PRICES - DETAILED LIST');
+                console.log('='.repeat(80));
+                filteredTokensList.forEach((token, index) => {
+                    console.log(`${index + 1}. ${token.symbol} (${token.name})`);
+                    console.log(`   💰 Market Cap: ${token.marketCap}`);
+                    console.log(`   💲 Current Price: ${token.currentPrice}`);
+                    console.log(`   📊 24h Ago Price: ${token.price24hAgo}`);
+                    console.log(`   ❌ Filtered Reason: ${token.reason}`);
+                    console.log('   ' + '-'.repeat(50));
+                });
+                console.log('='.repeat(80) + '\n');
+            }
+        }
+
         // Process tokens to add images (only for BitQuery tokens, CoinGecko and SolanaTracker already have images)
         if (data.data && data.data.Solana && data.data.Solana.TokenSupplyUpdates && apiUsed === 'bitquery') {
             debugLog('🖼️ Processing token images from BitQuery...');
             safeLog('🖼️ Processing token images from primary source...');
-            
+
             const tokensWithImages = await Promise.all(
                 data.data.Solana.TokenSupplyUpdates.map(async (tokenData) => {
                     try {
                         const uri = tokenData.TokenSupplyUpdate.Currency.Uri;
                         const imageUrl = await getTokenImage(uri);
-                        
+
                         return {
                             ...tokenData,
                             TokenSupplyUpdate: {
@@ -683,7 +835,7 @@ app.get('/api/tokens', async (req, res) => {
                     }
                 })
             );
-            
+
             // Update the data structure with processed tokens
             data.data.Solana.TokenSupplyUpdates = tokensWithImages;
             console.log(`✅ Processed ${tokensWithImages.length} tokens with image data`);
@@ -694,7 +846,7 @@ app.get('/api/tokens', async (req, res) => {
             debugLog('✅ SolanaTracker tokens already include image URLs');
             safeLog('✅ SolanaTracker tokens already include image URLs');
         }
-        
+
         // Return processed data to frontend (API provider info sanitized for security)
         const response = {
             ...data,
@@ -706,14 +858,17 @@ app.get('/api/tokens', async (req, res) => {
                 // Removed: source, currentPreference (security enhancement)
             }
         };
-        
+
+        // Cache the response for future requests
+        setCachedTokens(marketCapFilter, response);
+
         res.json(response);
-        
+
     } catch (error) {
         console.error('❌ Error fetching tokens:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to fetch token data',
-            details: error.message 
+            details: error.message
         });
     }
 });
@@ -733,35 +888,35 @@ app.get('/api/source', (req, res) => {
 app.post('/api/set-source', (req, res) => {
     try {
         const { source } = req.body;
-        
+
         if (!source || !['auto', 'bitquery', 'coingecko'].includes(source)) {
             return res.status(400).json({
                 error: 'Invalid source. Must be one of: auto, bitquery, coingecko'
             });
         }
-        
+
         // Validate API availability
         if (source === 'bitquery' && !API_KEY) {
             return res.status(400).json({
                 error: 'Primary API key not configured'
             });
         }
-        
+
         if (source === 'coingecko' && !COINGECKO_API_KEY) {
             return res.status(400).json({
                 error: 'Backup API key not configured'
             });
         }
-        
+
         currentApiSource = source;
         console.log(`🔄 API source changed to: ${source}`);
-        
+
         res.json({
             success: true,
             newSource: currentApiSource,
             message: `API source switched to ${source}`
         });
-        
+
     } catch (error) {
         res.status(500).json({
             error: 'Failed to change API source',
@@ -770,18 +925,147 @@ app.post('/api/set-source', (req, res) => {
     }
 });
 
+// DexScreener API proxy endpoint for sponsored coins (with 5-minute cache)
+app.get('/api/dexscreener/:address', async (req, res) => {
+    try {
+        const { address } = req.params;
+
+        if (!address) {
+            return res.status(400).json({
+                error: 'Mint address is required'
+            });
+        }
+
+        // Check cache first (5-minute cache for sponsored coins)
+        const now = Date.now();
+        const cachedEntry = dexScreenerCache.get(address);
+
+        if (cachedEntry && (now - cachedEntry.lastUpdate < DEXSCREENER_CACHE_DURATION)) {
+            const cacheAge = Math.floor((now - cachedEntry.lastUpdate) / 1000);
+            console.log(`📦 Serving cached DexScreener data for ${address} (age: ${cacheAge}s)`);
+            return res.json({
+                success: true,
+                data: cachedEntry.data,
+                cached: true,
+                cacheAge: cacheAge
+            });
+        }
+
+        // Cache expired or doesn't exist, fetch fresh data
+        console.log(`🔍 Fetching fresh DexScreener data for: ${address}`);
+
+        const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${address}`);
+
+        if (!response.ok) {
+            throw new Error(`DexScreener API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.pairs || data.pairs.length === 0) {
+            return res.status(404).json({
+                error: 'No pairs found for this token'
+            });
+        }
+
+        const token = data.pairs[0];
+
+        const tokenData = {
+            symbol: token.baseToken.symbol || 'Unknown',
+            name: token.baseToken.name || 'Unknown Token',
+            address: address,
+            marketCap: Number(token.fdv) || 0,
+            imageUrl: token.info?.imageUrl || null,
+            website: token.url || `https://dexscreener.com/solana/${address}`
+        };
+
+        // Cache the response for 5 minutes
+        dexScreenerCache.set(address, {
+            data: tokenData,
+            lastUpdate: Date.now()
+        });
+        console.log(`💾 Cached DexScreener data for ${address} (5-minute cache)`);
+
+        res.json({
+            success: true,
+            data: tokenData,
+            cached: false
+        });
+    } catch (error) {
+        console.error('❌ Error fetching from DexScreener:', error);
+
+        // Try to return stale cache if available (graceful degradation)
+        const cachedEntry = dexScreenerCache.get(req.params.address);
+        if (cachedEntry) {
+            console.log(`⚠️ Returning stale cached data due to error`);
+            return res.json({
+                success: true,
+                data: cachedEntry.data,
+                cached: true,
+                stale: true
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to fetch token data',
+            details: error.message
+        });
+    }
+});
+
+// Solana price endpoint (fetches on-demand with 1-minute cache)
+app.get('/api/solana-price', async (req, res) => {
+    try {
+        if (!COINMARKETCAP_API_KEY) {
+            return res.status(500).json({
+                error: 'CoinMarketCap API key not configured'
+            });
+        }
+
+        // Fetch price (will use cache if less than 1 minute old)
+        const price = await fetchSolanaPrice();
+
+        if (!price) {
+            return res.status(503).json({
+                error: 'Price data not available',
+                message: 'Please try again in a moment'
+            });
+        }
+
+        res.json({
+            success: true,
+            price: price,
+            symbol: 'SOL',
+            currency: 'USD',
+            lastUpdate: solanaPriceCache.lastUpdate,
+            cached: Date.now() - solanaPriceCache.lastUpdate < CACHE_DURATION
+        });
+    } catch (error) {
+        console.error('❌ Error serving Solana price:', error);
+        res.status(500).json({
+            error: 'Failed to fetch Solana price',
+            details: error.message
+        });
+    }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'healthy', 
+    res.json({
+        status: 'healthy',
         timestamp: new Date().toISOString(),
         apis: {
             bitquery: !!API_KEY,
             coingecko: !!COINGECKO_API_KEY,
-            solanatracker: !!SOLANATRACKER_API_KEY
+            solanatracker: !!SOLANATRACKER_API_KEY,
+            coinmarketcap: !!COINMARKETCAP_API_KEY
         },
         currentSource: currentApiSource,
-        lastUsed: lastApiUsed
+        lastUsed: lastApiUsed,
+        solanaPriceCache: {
+            available: !!solanaPriceCache.price,
+            lastUpdate: solanaPriceCache.lastUpdate
+        }
     });
 });
 
@@ -790,7 +1074,7 @@ app.listen(PORT, () => {
     console.log(`🔒 ENHANCED SECURE API server running on http://localhost:${PORT}`);
     console.log(`🛡️ Security Features Enabled:`);
     console.log(`   ✅ API keys secured in .env file`);
-    console.log(`   ✅ Rate limiting (100 req/15min per IP)`);
+    console.log(`   ✅ Smart rate limiting (500 req/15min per IP - cached requests friendly)`);
     console.log(`   ✅ Security headers (XSS, CSRF, etc.)`);
     console.log(`   ✅ Input validation & sanitization`);
     console.log(`   ✅ Request size limits (10MB)`);
@@ -799,7 +1083,7 @@ app.listen(PORT, () => {
     debugLog(`🔥 SolanaTracker API: ${SOLANATRACKER_API_KEY ? '✅ Configured' : '❌ Missing'}`);
     safeLog(`📡 Primary API: ${API_KEY ? '✅ Configured' : '❌ Missing'}`);
     safeLog(`📡 Backup API: ${COINGECKO_API_KEY ? '✅ Configured' : '❌ Missing'}`);
-    safeLog(`📡 Trending API: ${SOLANATRACKER_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    safeLog(`🔥 Trending API: ${SOLANATRACKER_API_KEY ? '✅ Configured' : '❌ Missing'}`);
     console.log(`🚀 Current API source: ${currentApiSource}`);
     console.log(`🌐 Frontend endpoints:`);
     console.log(`   📊 Get tokens: http://localhost:${PORT}/api/tokens`);

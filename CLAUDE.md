@@ -2,3 +2,4 @@
 - Now lets focus on new feature, We will add a new feature to show top 100 memecoins but from 3 millions to maximum 10 millions marketcap. 
 - We have completed The new feaure for mid range market coin 3m-10m marketcap.
 - We have added coin images on all boxes.
+- On vercel we have project name: meme360 so if we deploy this to vercel we need to deploy only on exising project we have on vercel name: meme360

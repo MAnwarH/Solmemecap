@@ -2,45 +2,37 @@
 // No more exposed credentials in frontend code!
 
 // 💎 SPONSORED COINS DATA - Featured premium projects
+// First coin will be fetched from DexScreener API dynamically
 const sponsoredCoins = [
     {
-        symbol: 'MOONX',
-        name: 'MoonX Protocol',
-        address: 'Mo0nX1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
-        marketCap: 15000000,
-        price: 0.0000234,
-        changePercent: 12.34,
-        isPositive: true,
-        hasValidChange: true,
-        imageUrl: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=120&h=120&fit=crop&crop=center',
-        website: 'https://moonxprotocol.com',
-        description: 'Next-gen DeFi protocol for lunar missions'
+        mintAddress: '7a9bV18JwNQDZePjoXLnU69Y41GFZPuSLVtrNM9mbonk', // Will be fetched from DexScreener
+        symbol: null,
+        name: null,
+        address: null,
+        marketCap: 0,
+        imageUrl: null,
+        website: null,
+        isLoading: true
     },
     {
-        symbol: 'ROCKET',
-        name: 'Rocket Finance',
-        address: 'Ro0cK3t1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s',
-        marketCap: 8500000,
-        price: 0.0000156,
-        changePercent: 25.67,
-        isPositive: true,
-        hasValidChange: true,
-        imageUrl: 'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=120&h=120&fit=crop&crop=center',
-        website: 'https://rocketfinance.io',
-        description: 'Blazing fast cross-chain yield farming'
+        symbol: 'YOUR COIN',
+        name: 'Your coin here',
+        address: null,
+        marketCap: 0,
+        imageUrl: null,
+        website: null,
+        description: 'Advertise your coin here',
+        isPlaceholder: true
     },
     {
-        symbol: 'GEMS',
-        name: 'Hidden Gems',
-        address: 'Ge0mS1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0',
-        marketCap: 6200000,
-        price: 0.0000089,
-        changePercent: 8.92,
-        isPositive: true,
-        hasValidChange: true,
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=120&h=120&fit=crop&crop=center',
-        website: 'https://hiddengems.finance',
-        description: 'Discover undervalued crypto treasures'
+        symbol: 'YOUR COIN',
+        name: 'Your coin here',
+        address: null,
+        marketCap: 0,
+        imageUrl: null,
+        website: null,
+        description: 'Advertise your coin here',
+        isPlaceholder: true
     }
 ];
 
@@ -115,20 +107,79 @@ const mockTokens = [
 ];
 
 
+// 🌐 FETCH SPONSORED COIN: Fetch coin data from DexScreener API via server proxy
+async function fetchSponsoredCoin(mintAddress) {
+    try {
+        console.log(`🔍 Fetching sponsored coin data for: ${mintAddress}`);
+        const response = await fetch(`/api/dexscreener/${mintAddress}`);
+
+        if (!response.ok) {
+            throw new Error(`DexScreener API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success || !result.data) {
+            console.warn('⚠️ No data found for this token');
+            return null;
+        }
+
+        // Override image with local image for sponsored coin
+        const coinData = result.data;
+        coinData.imageUrl = '/image.webp';
+
+        return coinData;
+    } catch (error) {
+        console.error('❌ Error fetching sponsored coin:', error);
+        return null;
+    }
+}
+
 // 💎 SPONSORED COINS: Create and render sponsored coin tiles
 function createSponsoredTile(coin, index) {
     const tile = document.createElement('div');
     tile.className = 'sponsored-tile';
 
-    // Format percentage display
-    let percentageDisplay = 'N/A';
-    let percentClass = '';
-    if (coin.hasValidChange) {
-        const sign = coin.isPositive ? '+' : '';
-        percentageDisplay = `${sign}${coin.changePercent.toFixed(2)}%`;
-        percentClass = coin.isPositive ? 'positive' : 'negative';
+    // Check if this is a placeholder tile
+    if (coin.isPlaceholder) {
+        tile.classList.add('sponsored-placeholder');
+
+        tile.innerHTML = `
+            <div class="sponsored-badge">AD</div>
+            <div class="placeholder-icon">📈</div>
+            <div class="tile-content">
+                <div class="sponsored-symbol">Your</div>
+                <div class="sponsored-name">coin</div>
+                <div class="sponsored-address">
+                    Contact us
+                </div>
+            </div>
+        `;
+
+        // Add click handler for placeholder - opens Telegram
+        tile.addEventListener('click', () => {
+            trackEvent('placeholder_ad_click', {
+                position: index + 1,
+                page_title: document.title
+            });
+            window.open('https://t.me/phoenixIam', '_blank');
+        });
+
+        // Add hover effects for placeholder
+        tile.addEventListener('mouseenter', () => {
+            tile.style.transform = 'scale(1.02)';
+            tile.style.filter = 'brightness(1.2)';
+        });
+
+        tile.addEventListener('mouseleave', () => {
+            tile.style.transform = 'scale(1)';
+            tile.style.filter = 'brightness(1)';
+        });
+
+        return tile;
     }
 
+    // Regular sponsored coin logic
     // Use similar structure to ranking tiles but with "AD" instead of rank
     const imageElement = coin.imageUrl ?
         `<img src="${coin.imageUrl}" alt="${coin.symbol}" class="sponsored-image" onerror="this.style.display='none'">` :
@@ -139,15 +190,16 @@ function createSponsoredTile(coin, index) {
         ${imageElement}
         <div class="tile-content">
             <div class="sponsored-symbol">${coin.symbol}</div>
-            <div class="sponsored-name">$${formatNumber(coin.marketCap)}</div>
+            <div class="sponsored-name">${coin.name}</div>
             <div class="sponsored-address">
-                ${percentageDisplay}
+                $${formatNumber(coin.marketCap)}
             </div>
         </div>
     `;
 
     // Add click handler to open website or Dexscreener
     tile.addEventListener('click', () => {
+        trackCoinClick(coin.symbol, 'AD', 'sponsored');
         if (coin.website) {
             window.open(coin.website, '_blank');
         } else {
@@ -169,18 +221,92 @@ function createSponsoredTile(coin, index) {
     return tile;
 }
 
-function populateSponsoredSection() {
+async function populateSponsoredSection() {
     const sponsoredGrid = document.getElementById('sponsored-grid');
     if (!sponsoredGrid) return;
 
     // Clear existing content
     sponsoredGrid.innerHTML = '';
 
+    // Fetch data for coins that need it (coins with mintAddress)
+    for (let i = 0; i < sponsoredCoins.length; i++) {
+        const coin = sponsoredCoins[i];
+
+        // If coin has mintAddress, fetch data from DexScreener
+        if (coin.mintAddress && coin.isLoading) {
+            const fetchedData = await fetchSponsoredCoin(coin.mintAddress);
+
+            if (fetchedData) {
+                // Update the coin object with fetched data
+                sponsoredCoins[i] = {
+                    ...fetchedData,
+                    mintAddress: coin.mintAddress
+                };
+                console.log(`✅ Successfully fetched sponsored coin: ${fetchedData.symbol}`);
+            } else {
+                console.warn('⚠️ Failed to fetch sponsored coin, using placeholder');
+                sponsoredCoins[i] = {
+                    symbol: 'ERROR',
+                    name: 'Failed to load',
+                    address: coin.mintAddress,
+                    marketCap: 0,
+                    imageUrl: null,
+                    website: null,
+                    isPlaceholder: true
+                };
+            }
+        }
+    }
+
     // Create and append sponsored tiles
     sponsoredCoins.forEach((coin, index) => {
         const tile = createSponsoredTile(coin, index);
         sponsoredGrid.appendChild(tile);
     });
+}
+
+// 🔍 CHECK API AVAILABILITY: Check if BitQuery API is available and hide mid-range option if not
+async function checkApiAvailability() {
+    try {
+        const response = await fetch('/api/health');
+        const healthData = await response.json();
+
+        const dropdown = document.getElementById('market-cap-dropdown');
+        const midRangeOption = dropdown.querySelector('option[value="mid-range"]');
+
+        if (!healthData.apis.bitquery && midRangeOption) {
+            // Hide mid-range option if BitQuery API is not available
+            midRangeOption.style.display = 'none';
+            midRangeOption.disabled = true;
+
+            // If currently selected filter is mid-range, switch to 'all'
+            if (currentMarketCapFilter === 'mid-range') {
+                dropdown.value = 'all';
+                currentMarketCapFilter = 'all';
+            }
+        } else if (healthData.apis.bitquery && midRangeOption) {
+            // Show mid-range option if BitQuery API is available
+            midRangeOption.style.display = 'block';
+            midRangeOption.disabled = false;
+        }
+
+        // Track API health status
+        trackApiHealthEvent(healthData.apis);
+    } catch (error) {
+        // If health check fails, assume APIs are unavailable and hide mid-range
+        const dropdown = document.getElementById('market-cap-dropdown');
+        const midRangeOption = dropdown.querySelector('option[value="mid-range"]');
+
+        if (midRangeOption) {
+            midRangeOption.style.display = 'none';
+            midRangeOption.disabled = true;
+
+            if (currentMarketCapFilter === 'mid-range') {
+                dropdown.value = 'all';
+                currentMarketCapFilter = 'all';
+            }
+        }
+    }
 }
 
 async function fetchTokens(marketCapFilter = 'all') {
@@ -194,7 +320,7 @@ async function fetchTokens(marketCapFilter = 'all') {
             filterDesc = '5M+ market cap';
         }
         // 🔒 PRODUCTION: Removed console logging for security
-        
+
         // 🛡️ SECURE: Call our own API endpoint (API key is hidden on server)
         const url = marketCapFilter === 'all' ? '/api/tokens' : `/api/tokens?filter=${marketCapFilter}`;
         const response = await fetch(url, {
@@ -314,7 +440,7 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
     const baseSpan = 1;
     const maxSpan = 4;
     let colSpan = Math.max(baseSpan, Math.min(maxSpan, Math.ceil(marketCapRatio * maxSpan)));
-    let rowSpan = Math.max(baseSpan, Math.min(3, Math.ceil(marketCapRatio * 2.5)));
+    let rowSpan = Math.max(baseSpan, Math.min(4, Math.ceil(marketCapRatio * 3)));
     
     
     // Mobile-specific logic for better 2-per-row layout
@@ -404,6 +530,10 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
     tile.style.gridRow = `span ${rowSpan}`;
     tile.style.backgroundColor = backgroundColor;
     tile.style.border = `1px solid ${borderColor}`;
+
+    // Add class for large tiles based on width (227px or larger)
+    // Calculate approximate tile width: colSpan × (container width / 12 columns)
+    // We'll add the class after the tile is rendered and we can measure its actual width
     
     // Dynamic font sizes based on span size (bigger and more readable)
     const spanArea = colSpan * rowSpan;
@@ -454,6 +584,7 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
 
     // Add click handler to open Dexscreener
     tile.addEventListener('click', () => {
+        trackCoinClick(token.symbol, index + 1, 'main_grid');
         openDexscreener(tokenAddress, token.symbol);
     });
 
@@ -469,6 +600,14 @@ function createCoin360Tile(token, index, maxMarketCap, marketCapFilter = 'all') 
         tile.style.filter = 'brightness(1)';
         hideCoin360Tooltip();
     });
+
+    // Check tile width after rendering and add large-tile class if width >= 227px
+    setTimeout(() => {
+        const tileWidth = tile.offsetWidth;
+        if (tileWidth >= 227) {
+            tile.classList.add('large-tile');
+        }
+    }, 0);
 
     return tile;
 }
@@ -847,7 +986,13 @@ function updateRefreshButtonState(timeSinceLastRefresh) {
 function changeLayout(layout) {
     const tokensGrid = document.getElementById('tokens-grid');
     const tokensTable = document.getElementById('tokens-table');
-    
+
+    // Track layout change
+    trackEvent('layout_change', {
+        new_layout: layout,
+        page_title: document.title
+    });
+
     if (layout === 'list') {
         tokensGrid.style.display = 'none';
         tokensTable.style.display = 'table';
@@ -896,6 +1041,7 @@ function createTableRow(token, index) {
     
     // Add click handler to open Dexscreener
     row.addEventListener('click', () => {
+        trackCoinClick(token.symbol, index + 1, 'table');
         openDexscreener(tokenAddress, token.symbol);
     });
     
@@ -905,10 +1051,265 @@ function createTableRow(token, index) {
 function populateTable(tokens) {
     const tableBody = document.getElementById('tokens-table-body');
     tableBody.innerHTML = '';
-    
+
     tokens.forEach((token, index) => {
         const row = createTableRow(token, index);
         tableBody.appendChild(row);
+    });
+}
+
+// 🫧 BUBBLE VIEW FUNCTIONS
+function getBubbleSize(marketCap, maxMarketCap) {
+    const ratio = marketCap / maxMarketCap;
+    if (ratio > 0.8) return 'bubble-xl';
+    if (ratio > 0.6) return 'bubble-large';
+    if (ratio > 0.4) return 'bubble-medium';
+    if (ratio > 0.2) return 'bubble-small';
+    return 'bubble-xs';
+}
+
+function getBubbleColor(token) {
+    if (!token.hasValidChange) return 'bubble-neutral';
+
+    const changePercent = Math.abs(token.changePercent);
+    const baseClass = token.isPositive ? 'bubble-positive' : 'bubble-negative';
+
+    // Add intensity based on percentage change
+    if (changePercent >= 10) {
+        return `${baseClass} intense`;
+    } else if (changePercent >= 5) {
+        return baseClass;
+    } else {
+        return `${baseClass} mild`;
+    }
+}
+
+function createBubbleItem(token, index, maxMarketCap) {
+    const bubble = document.createElement('div');
+    bubble.className = `bubble-item ${getBubbleSize(token.marketCap, maxMarketCap)} ${getBubbleColor(token)}`;
+
+    const changeText = token.hasValidChange ?
+        `${token.isPositive ? '+' : ''}${token.changePercent.toFixed(2)}%` :
+        'N/A';
+
+    // Create image element if token has image
+    const imageElement = token.imageUrl ?
+        `<img src="${token.imageUrl}" alt="${token.symbol}" class="bubble-image" onerror="this.style.display='none'">` :
+        '';
+
+    bubble.innerHTML = `
+        <div class="bubble-rank">#${index + 1}</div>
+        ${imageElement}
+        <div class="bubble-symbol">${token.symbol}</div>
+        <div class="bubble-change">${changeText}</div>
+        <div class="bubble-market-cap">$${formatNumber(token.marketCap)}</div>
+    `;
+
+    // Add random animation delay and variation for staggered floating effect
+    const animationDelay = Math.random() * 6; // 0 to 6 seconds
+    const animationDuration = 4 + Math.random() * 4; // 4 to 8 seconds
+    const animationVariations = ['floatBubble', 'floatBubble2', 'floatBubble3'];
+    const randomAnimation = animationVariations[Math.floor(Math.random() * animationVariations.length)];
+
+    bubble.style.animationDelay = `${animationDelay}s`;
+    bubble.style.animationDuration = `${animationDuration}s`;
+    bubble.style.animationName = randomAnimation;
+
+    // Add click handler
+    bubble.addEventListener('click', () => {
+        trackCoinClick(token.symbol, index + 1, 'bubble');
+        openDexscreener(token.address, token.symbol);
+    });
+
+    return bubble;
+}
+
+function generateRandomPosition(container, bubbleSize, existingBubbles = []) {
+    // Account for container padding (20px on all sides)
+    const containerWidth = container.clientWidth - 40; // Subtract left + right padding
+    const containerHeight = container.clientHeight - 40; // Subtract top + bottom padding
+
+    // Get bubble dimensions based on size class - more distinct sizes
+    let bubbleWidth, bubbleHeight;
+    switch(bubbleSize) {
+        case 'bubble-xl': bubbleWidth = bubbleHeight = 170; break;
+        case 'bubble-large': bubbleWidth = bubbleHeight = 140; break;
+        case 'bubble-medium': bubbleWidth = bubbleHeight = 110; break;
+        case 'bubble-small': bubbleWidth = bubbleHeight = 85; break;
+        case 'bubble-xs': bubbleWidth = bubbleHeight = 65; break;
+        default: bubbleWidth = bubbleHeight = 110;
+    }
+
+    let attempts = 0;
+    let position;
+    // Use reasonable margin to account for ranking badges extending outside bubbles
+    const margin = 30; // Sufficient margin to account for ranking badge (28px) plus some buffer
+
+    // Ensure we have enough space for positioning
+    const maxLeft = containerWidth - bubbleWidth - margin;
+    const maxTop = containerHeight - bubbleHeight - margin;
+
+    // Try random positioning first
+    do {
+        position = {
+            left: Math.max(margin, Math.min(maxLeft, margin + Math.random() * (maxLeft - margin))),
+            top: Math.max(margin, Math.min(maxTop, margin + Math.random() * (maxTop - margin)))
+        };
+        attempts++;
+    } while (attempts < 50 && isOverlapping(position, bubbleWidth, bubbleHeight, existingBubbles));
+
+    // If random fails, use intelligent grid placement
+    if (attempts >= 50) {
+        position = findGridPosition(containerWidth, containerHeight, bubbleWidth, bubbleHeight, existingBubbles, margin);
+    }
+
+    return position;
+}
+
+function findGridPosition(containerWidth, containerHeight, bubbleWidth, bubbleHeight, existingBubbles, margin) {
+    // Calculate grid based on largest bubble size to ensure spacing
+    const cellSize = 160; // Further increased cell size to accommodate largest bubbles (170px) with spacing
+    const availableWidth = containerWidth - (margin * 2);
+    const availableHeight = containerHeight - (margin * 2);
+    const cols = Math.floor(availableWidth / cellSize);
+    const rows = Math.floor(availableHeight / cellSize);
+
+    // Create a grid and mark occupied cells
+    const grid = Array(rows).fill().map(() => Array(cols).fill(false));
+
+    // Mark existing bubbles in grid
+    existingBubbles.forEach(existing => {
+        const gridCol = Math.floor((existing.left - margin) / cellSize);
+        const gridRow = Math.floor((existing.top - margin) / cellSize);
+        if (gridRow >= 0 && gridRow < rows && gridCol >= 0 && gridCol < cols) {
+            grid[gridRow][gridCol] = true;
+        }
+    });
+
+    // Find first available cell
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            if (!grid[row][col]) {
+                // Center the bubble in the cell with bounds checking
+                const cellCenterX = margin + col * cellSize + (cellSize - bubbleWidth) / 2;
+                const cellCenterY = margin + row * cellSize + (cellSize - bubbleHeight) / 2;
+
+                // Ensure position is within bounds
+                const safeLeft = Math.max(margin, Math.min(containerWidth - bubbleWidth - margin, cellCenterX));
+                const safeTop = Math.max(margin, Math.min(containerHeight - bubbleHeight - margin, cellCenterY));
+
+                return {
+                    left: safeLeft + Math.random() * 10 - 5, // Smaller random offset
+                    top: safeTop + Math.random() * 10 - 5
+                };
+            }
+        }
+    }
+
+    // If grid is full, place in a safe fallback position
+    const fallbackLeft = Math.max(margin, Math.min(containerWidth - bubbleWidth - margin, margin + (existingBubbles.length % cols) * cellSize));
+    const fallbackTop = Math.max(margin, Math.min(containerHeight - bubbleHeight - margin, margin + Math.floor(existingBubbles.length / cols) * cellSize));
+
+    return {
+        left: fallbackLeft,
+        top: fallbackTop
+    };
+}
+
+function isOverlapping(position, width, height, existingBubbles) {
+    const radius = width / 2;
+    const centerX = position.left + radius;
+    const centerY = position.top + radius;
+
+    return existingBubbles.some(existing => {
+        const existingCenterX = existing.left + existing.width / 2;
+        const existingCenterY = existing.top + existing.height / 2;
+
+        const distance = Math.sqrt(
+            Math.pow(centerX - existingCenterX, 2) +
+            Math.pow(centerY - existingCenterY, 2)
+        );
+
+        const minDistance = radius + existing.width / 2 + 15; // Increased buffer to 15px
+        return distance < minDistance;
+    });
+}
+
+function calculateOptimalHeight(tokenCount, container) {
+    // Check if mobile
+    const isMobile = window.innerWidth <= 768;
+    const baseHeight = isMobile ? 550 : 650; // Minimum height
+    const maxHeight = isMobile ? 1000 : 1400; // Increased maximum height for better spacing
+
+    // Calculate how many tokens can fit in base height - use more conservative estimates
+    const containerWidth = container.clientWidth - (isMobile ? 30 : 40); // Account for padding
+    const cellSize = isMobile ? 110 : 160; // Increased cell size for better spacing (account for largest bubbles)
+    const tokensPerRow = Math.floor(containerWidth / cellSize);
+    const baseRowCount = Math.floor((baseHeight - (isMobile ? 30 : 40)) / cellSize); // Account for padding
+    const baseTokenCapacity = tokensPerRow * baseRowCount;
+
+    // More generous capacity calculation - reduce base capacity by 20% to ensure no overlapping
+    const safeTokenCapacity = Math.floor(baseTokenCapacity * 0.8);
+
+    // If tokens fit comfortably in base height, use base height
+    if (tokenCount <= safeTokenCapacity) {
+        return baseHeight;
+    }
+
+    // Calculate additional height needed with extra buffer
+    const excessTokens = tokenCount - safeTokenCapacity;
+    const additionalRows = Math.ceil(excessTokens / tokensPerRow);
+    const additionalHeight = additionalRows * cellSize;
+
+    // Add 20% extra height buffer to prevent any overlapping
+    const bufferHeight = Math.floor(additionalHeight * 0.2);
+    const calculatedHeight = baseHeight + additionalHeight + bufferHeight;
+
+    // Cap at maximum height
+    return Math.min(calculatedHeight, maxHeight);
+}
+
+function populateBubbles(tokens) {
+    const bubbleContainer = document.getElementById('bubble-container');
+    bubbleContainer.innerHTML = '';
+
+    if (tokens.length === 0) return;
+
+    // Calculate optimal height based on number of tokens
+    const optimalHeight = calculateOptimalHeight(tokens.length, bubbleContainer);
+    bubbleContainer.style.height = `${optimalHeight}px`;
+
+    const maxMarketCap = Math.max(...tokens.map(t => t.marketCap));
+    const existingBubbles = [];
+
+    // Show all tokens like in box layout
+    tokens.forEach((token, index) => {
+        const bubble = createBubbleItem(token, index, maxMarketCap);
+        const bubbleSize = getBubbleSize(token.marketCap, maxMarketCap);
+        const position = generateRandomPosition(bubbleContainer, bubbleSize, existingBubbles);
+
+        bubble.style.left = `${position.left}px`;
+        bubble.style.top = `${position.top}px`;
+
+        // Store position for overlap checking
+        let bubbleWidth;
+        switch(bubbleSize) {
+            case 'bubble-xl': bubbleWidth = 140; break;
+            case 'bubble-large': bubbleWidth = 110; break;
+            case 'bubble-medium': bubbleWidth = 85; break;
+            case 'bubble-small': bubbleWidth = 65; break;
+            case 'bubble-xs': bubbleWidth = 45; break;
+            default: bubbleWidth = 85;
+        }
+
+        existingBubbles.push({
+            left: position.left,
+            top: position.top,
+            width: bubbleWidth,
+            height: bubbleWidth
+        });
+
+        bubbleContainer.appendChild(bubble);
     });
 }
 
@@ -923,6 +1324,10 @@ function changeMarketCapFilter(filter) {
         }
         return;
     }
+
+    // Track filter change
+    const previousFilter = currentMarketCapFilter;
+    trackFilterChange(filter, previousFilter);
 
     currentMarketCapFilter = filter;
     let filterDesc;
@@ -940,11 +1345,17 @@ function changeMarketCapFilter(filter) {
 }
 
 
-// Load tokens when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    // Load tokens (bypass cooldown on first load)
-    loadTokens(true);
-});
+function handleRefreshClick() {
+    // Track refresh button click
+    trackEvent('refresh_click', {
+        page_title: document.title,
+        current_filter: currentMarketCapFilter
+    });
+
+    // Load tokens without bypassing cooldown
+    loadTokens(false, currentMarketCapFilter);
+}
+
 
 // Handle window resize to reapply mobile/desktop classes
 let resizeTimeout;
@@ -966,4 +1377,142 @@ window.addEventListener('resize', () => {
 });
 
 // Auto-refresh removed to save API credits
-// Use the refresh button to manually update data// Deployment fix
+// Use the refresh button to manually update data
+
+// 📊 GOOGLE ANALYTICS: Enhanced event tracking functions
+function trackEvent(eventName, parameters = {}) {
+    if (typeof gtag !== 'undefined') {
+        gtag('event', eventName, parameters);
+    }
+}
+
+function trackCoinClick(coinSymbol, coinRank, source) {
+    trackEvent('coin_click', {
+        coin_symbol: coinSymbol,
+        coin_rank: coinRank,
+        click_source: source, // 'main_grid', 'sponsored', 'table'
+        page_title: document.title
+    });
+}
+
+function trackFilterChange(filterType, previousFilter) {
+    trackEvent('filter_change', {
+        new_filter: filterType,
+        previous_filter: previousFilter,
+        page_title: document.title
+    });
+}
+
+function trackAdvertiseClick() {
+    trackEvent('advertise_cta_click', {
+        page_title: document.title,
+        cta_location: 'footer'
+    });
+}
+
+function trackBannerClick(bannerName) {
+    trackEvent('banner_ad_click', {
+        banner_name: bannerName,
+        page_title: document.title
+    });
+}
+
+function trackApiHealthEvent(apiStatus) {
+    trackEvent('api_health_check', {
+        bitquery_status: apiStatus.bitquery ? 'available' : 'unavailable',
+        coingecko_status: apiStatus.coingecko ? 'available' : 'unavailable',
+        solanatracker_status: apiStatus.solanatracker ? 'available' : 'unavailable',
+        page_title: document.title
+    });
+}
+
+function trackContactClick(contactType) {
+    trackEvent('contact_click', {
+        contact_type: contactType,
+        page_title: document.title
+    });
+}
+
+// 🚀 INITIALIZE APPLICATION: Check API availability and load initial data
+window.addEventListener('DOMContentLoaded', async () => {
+    // Track page load
+    trackEvent('page_view', {
+        page_title: document.title,
+        page_location: window.location.href
+    });
+
+    // Check API availability first to show/hide mid-range option
+    await checkApiAvailability();
+
+    // Load initial tokens with first load bypass
+    loadTokens(true);
+
+    // Check API availability every 5 minutes to handle runtime changes
+    setInterval(checkApiAvailability, 5 * 60 * 1000);
+
+    // Fetch Solana price initially and then every 30 seconds
+    fetchSolanaPrice();
+    setInterval(fetchSolanaPrice, 30000); // Update every 30 seconds (reads from server cache)
+});
+
+// Function to fetch and display Solana price (from server cache)
+async function fetchSolanaPrice() {
+    try {
+        const response = await fetch('/api/solana-price');
+        const data = await response.json();
+
+        const priceFooter = document.getElementById('solana-price-footer');
+        const priceValue = document.getElementById('solana-price-value');
+
+        if (data && data.success && data.price) {
+            const formattedPrice = `$${data.price.toFixed(2)}`;
+            priceValue.textContent = formattedPrice;
+            // Show the footer if it was hidden
+            if (priceFooter) {
+                priceFooter.style.display = 'flex';
+            }
+        } else {
+            console.warn('Failed to fetch Solana price:', data.error || 'Unknown error');
+            // Hide the footer if API is not working
+            if (priceFooter) {
+                priceFooter.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching Solana price:', error);
+        // Hide the footer on error to prevent breaking the site
+        const priceFooter = document.getElementById('solana-price-footer');
+        if (priceFooter) {
+            priceFooter.style.display = 'none';
+        }
+    }
+}
+
+// FAQ Accordion Toggle Function
+function toggleFaq(element) {
+    const faqItem = element.parentElement;
+    const faqAnswer = element.nextElementSibling;
+    const toggle = element.querySelector('.faq-toggle');
+
+    // Close all other FAQs
+    const allFaqItems = document.querySelectorAll('.faq-item');
+    allFaqItems.forEach(item => {
+        if (item !== faqItem && item.classList.contains('active')) {
+            item.classList.remove('active');
+            const otherToggle = item.querySelector('.faq-toggle');
+            if (otherToggle) otherToggle.textContent = '+';
+        }
+    });
+
+    // Toggle current FAQ
+    faqItem.classList.toggle('active');
+
+    // Update toggle icon
+    if (faqItem.classList.contains('active')) {
+        toggle.textContent = '−';
+    } else {
+        toggle.textContent = '+';
+    }
+}
+
+// Deployment fix

@@ -4,12 +4,17 @@
     box-sizing: border-box;
 }
 
+html {
+    overflow-x: hidden; /* Additional protection for mobile browsers */
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #1a1a1a;
     color: #ffffff;
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: hidden; /* Prevent horizontal scrolling caused by Beta ribbon */
+    position: relative; /* Create positioning context for Beta ribbon */
 }
 
 /* Beta Version Ribbon */
@@ -48,6 +53,7 @@ body {
     padding: 5px;
     position: relative;
     z-index: 1;
+    overflow-x: hidden; /* Prevent any child elements from causing overflow */
 }
 
 .header {
@@ -751,6 +757,12 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Large tile images for boxes 227px or larger (4+ row spans) */
+.coin360-tile.large-tile .tile-image {
+    width: 32px !important;
+    height: 32px !important;
+}
+
 .coin360-tile:hover .tile-image {
     transform: scale(1.05);
 }
@@ -938,6 +950,7 @@ body {
     .container {
         padding: 10px;
     }
+
     
     .header {
         flex-direction: column;
@@ -1022,20 +1035,20 @@ body {
     .tile-image {
         top: 4px;
         right: 4px;
-        width: 28px;
-        height: 28px;
+        width: 56px;
+        height: 56px;
     }
-    
+
     .tile-image-small {
-        width: 14px !important;
-        height: 14px !important;
+        width: 28px !important;
+        height: 28px !important;
         top: 3px;
         right: 3px;
     }
-    
+
     .tile-image-18px {
-        width: 16px !important;
-        height: 16px !important;
+        width: 32px !important;
+        height: 32px !important;
         top: 3px;
         right: 3px;
     }
@@ -1063,10 +1076,20 @@ body {
 }
 
 @media (max-width: 480px) {
+    /* Additional mobile overflow protection */
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+
     .container {
         padding: 8px;
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
     }
-    
+
     /* Smaller ribbon for mobile */
     .beta-ribbon {
         top: 15px;
@@ -1074,7 +1097,7 @@ body {
         width: 140px;
         height: 35px;
     }
-    
+
     .beta-text {
         font-size: 0.65rem;
         letter-spacing: 0.3px;
@@ -1235,21 +1258,21 @@ body {
     .tile-image {
         top: 3px;
         right: 3px;
-        width: 24px;
-        height: 24px;
+        width: 48px;
+        height: 48px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
-    
+
     .tile-image-small {
-        width: 12px !important;
-        height: 12px !important;
+        width: 24px !important;
+        height: 24px !important;
         top: 2px;
         right: 2px;
     }
-    
+
     .tile-image-18px {
-        width: 14px !important;
-        height: 14px !important;
+        width: 28px !important;
+        height: 28px !important;
         top: 2px;
         right: 2px;
     }
@@ -1371,8 +1394,21 @@ body {
     margin-bottom: 0px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 6px;
-    padding: 6px;
+    padding: 8px;
     border: 1px solid rgba(249, 202, 36, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ca-note {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    width: 100%;
 }
 
 .sponsored-grid {
@@ -1380,7 +1416,6 @@ body {
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
     max-width: 300px;
-    margin: 0 auto;
 }
 
 .sponsored-tile {
@@ -1419,8 +1454,8 @@ body {
 }
 
 .sponsored-image {
-    width: 22px;
-    height: 22px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     margin: 0 auto 3px;
     border: 1px solid rgba(249, 202, 36, 0.5);
@@ -1428,7 +1463,7 @@ body {
 }
 
 .sponsored-symbol {
-    font-size: 0.78rem;
+    font-size: 1rem;
     font-weight: bold;
     color: #ffffff;
     margin-bottom: 2px;
@@ -1436,14 +1471,14 @@ body {
 }
 
 .sponsored-name {
-    font-size: 0.5rem;
+    font-size: 0.7rem;
     color: #cccccc;
     margin-bottom: 2px;
     line-height: 1;
 }
 
 .sponsored-address {
-    font-size: 0.45rem;
+    font-size: 0.6rem;
     color: #888888;
     font-family: monospace;
     word-break: break-all;
@@ -1453,17 +1488,62 @@ body {
     line-height: 1.1;
 }
 
+/* Placeholder sponsored tile styles */
+.sponsored-placeholder {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)) !important;
+    border: 2px dashed rgba(249, 202, 36, 0.4) !important;
+    opacity: 0.8;
+}
+
+.sponsored-placeholder:hover {
+    opacity: 1;
+    border-color: #f9ca24 !important;
+    background: linear-gradient(135deg, rgba(249, 202, 36, 0.1), rgba(249, 202, 36, 0.05)) !important;
+}
+
+.placeholder-icon {
+    font-size: 24px;
+    margin: 2px auto 3px;
+    opacity: 0.7;
+}
+
+.sponsored-placeholder .sponsored-symbol {
+    font-size: 0.8rem;
+    color: #f9ca24;
+    font-weight: normal;
+}
+
+.sponsored-placeholder .sponsored-name {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sponsored-placeholder .sponsored-address {
+    background: rgba(249, 202, 36, 0.2);
+    color: #f9ca24;
+    font-family: inherit;
+    font-weight: bold;
+}
+
 /* Responsive Design for Sponsored Section */
 @media (max-width: 768px) {
     .sponsored-section {
-        padding: 4px;
+        padding: 6px;
         margin-bottom: 6px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ca-note {
+        font-size: 0.7rem;
+        text-align: center;
+        width: 100%;
     }
 
     .sponsored-grid {
         grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
-        max-width: 250px;
+        gap: 6px;
+        max-width: 100%;
+        width: 100%;
     }
 
     .sponsored-tile {
@@ -1472,12 +1552,12 @@ body {
     }
 
     .sponsored-image {
-        width: 16px;
-        height: 16px;
+        width: 24px;
+        height: 24px;
     }
 
     .sponsored-symbol {
-        font-size: 0.6rem;
+        font-size: 0.8rem;
     }
 
     .sponsored-badge {
@@ -1488,14 +1568,24 @@ body {
 
 @media (max-width: 480px) {
     .sponsored-section {
-        padding: 3px;
+        padding: 6px;
         margin-bottom: 5px;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .ca-note {
+        font-size: 0.65rem;
+        text-align: center;
+        width: 100%;
+        word-break: break-all;
     }
 
     .sponsored-grid {
         grid-template-columns: repeat(3, 1fr);
-        gap: 3px;
-        max-width: 200px;
+        gap: 4px;
+        max-width: 100%;
+        width: 100%;
     }
 
     .sponsored-tile {
@@ -1504,48 +1594,56 @@ body {
     }
 
     .sponsored-image {
-        width: 14px;
-        height: 14px;
+        width: 20px;
+        height: 20px;
     }
 
     .sponsored-symbol {
-        font-size: 0.55rem;
+        font-size: 0.7rem;
     }
 
     .sponsored-name {
-        font-size: 0.45rem;
+        font-size: 0.5rem;
     }
 
     .sponsored-address {
-        font-size: 0.4rem;
+        font-size: 0.45rem;
     }
 }
 
 /* SEO Footer Styles */
 .seo-footer {
-    margin-top: 40px;
-    padding: 30px 20px;
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.05), rgba(78, 205, 196, 0.05));
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    margin-top: 50px;
+    padding: 50px 30px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.08), rgba(78, 205, 196, 0.08));
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .seo-content h3 {
     color: #4ecdc4;
-    font-size: 1.3rem;
-    margin-bottom: 15px;
-    text-align: center;
-    font-weight: bold;
-    text-shadow: 0 2px 10px rgba(78, 205, 196, 0.3);
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    margin-top: 35px;
+    text-align: left;
+    font-weight: 700;
+    text-shadow: 0 2px 15px rgba(78, 205, 196, 0.4);
+    letter-spacing: 0.3px;
+}
+
+.seo-content h3:first-of-type {
+    margin-top: 0;
 }
 
 .seo-content p {
-    color: rgba(255, 255, 255, 0.8);
-    line-height: 1.6;
-    margin-bottom: 15px;
-    font-size: 0.9rem;
-    text-align: justify;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.8;
+    margin-bottom: 18px;
+    font-size: 0.95rem;
+    text-align: left;
+    max-width: 100%;
 }
 
 .seo-content strong {
@@ -1556,41 +1654,58 @@ body {
 .seo-keywords {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 20px;
+    gap: 12px;
+    justify-content: flex-start;
+    margin-top: 30px;
+    padding: 20px 0;
 }
 
 .keyword-tag {
-    background: linear-gradient(45deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2));
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.25), rgba(78, 205, 196, 0.25));
     color: #ffffff;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    padding: 10px 18px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.keyword-tag:hover {
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.35), rgba(78, 205, 196, 0.35));
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.25);
 }
 
 /* Mobile responsive footer */
 @media (max-width: 768px) {
     .seo-footer {
-        margin-top: 30px;
-        padding: 20px 15px;
+        margin-top: 35px;
+        padding: 30px 20px;
     }
-    
+
     .seo-content h3 {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        margin-top: 25px;
+        margin-bottom: 15px;
     }
-    
+
     .seo-content p {
-        font-size: 0.8rem;
+        font-size: 0.88rem;
         text-align: left;
     }
-    
+
     .keyword-tag {
-        font-size: 0.7rem;
-        padding: 4px 8px;
+        font-size: 0.75rem;
+        padding: 8px 14px;
+    }
+
+    .seo-keywords {
+        gap: 10px;
+        padding: 15px 0;
     }
 }
 
@@ -1630,6 +1745,11 @@ body {
     color: #aaaaaa;
     font-size: 0.8rem;
     font-style: italic;
+    text-align: center;
+}
+
+.advertise-cta p {
+    text-align: center;
 }
 
 /* Mobile responsiveness for Advertise button */
@@ -1641,6 +1761,787 @@ body {
 
     .advertise-subtitle {
         font-size: 0.75rem;
+    }
+}
+
+/* Contact Us Section */
+.contact-section {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.contact-section h3 {
+    color: #4ecdc4;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    font-weight: bold;
+    text-shadow: 0 2px 10px rgba(78, 205, 196, 0.3);
+    text-align: center;
+}
+
+.contact-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(45deg, rgba(78, 205, 196, 0.2), rgba(255, 107, 107, 0.2));
+    color: #ffffff;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(78, 205, 196, 0.2);
+}
+
+.contact-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.contact-link:hover {
+    background: linear-gradient(45deg, rgba(78, 205, 196, 0.4), rgba(255, 107, 107, 0.4));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+    color: #ffffff;
+}
+
+/* Mobile responsiveness for Contact section */
+@media (max-width: 768px) {
+    .contact-section h3 {
+        font-size: 1rem;
+    }
+
+    .contact-links {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .contact-link {
+        font-size: 0.8rem;
+        padding: 8px 16px;
+        width: fit-content;
+    }
+
+    .contact-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Solana Price Fixed Footer - Apple Glassmorphism Style */
+.solana-price-footer {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 25px;
+
+    /* Apple Glassmorphism Effect */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+    /* Border and Shadow */
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    box-shadow:
+        0 8px 32px 0 rgba(31, 38, 135, 0.37),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.3);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    z-index: 9999;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+
+    /* Smooth animations */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.solana-price-footer:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow:
+        0 12px 40px 0 rgba(31, 38, 135, 0.45),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.solana-price-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.3px;
+}
+
+.solana-price-value {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.2px;
+}
+
+/* Add bottom padding to body to prevent content from being hidden behind footer */
+body {
+    padding-bottom: 45px;
+}
+
+/* 🫧 BUBBLE VIEW STYLES - CryptoBubbles Exact Style */
+.bubble-container {
+    display: none;
+    position: relative;
+    width: 100%;
+    height: 650px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 50%, #1a1a1a 100%);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: visible; /* Allow ranking badges to be fully visible */
+    padding: 20px; /* Add padding to account for ranking badges extending outside bubbles */
+    box-sizing: border-box;
+}
+
+.bubble-item {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: rgba(30, 30, 30, 0.8); /* Semi-transparent background like CryptoBubbles */
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    overflow: visible; /* Allow content to be visible outside bubble */
+    font-family: 'Arial', sans-serif;
+    animation: floatBubble 6s ease-in-out infinite;
+    padding: 8px; /* Add internal padding to prevent content cutoff */
+    box-sizing: border-box;
+}
+
+.bubble-item:hover {
+    transform: scale(1.08);
+    z-index: 100;
+    animation-play-state: paused;
+}
+
+.bubble-rank {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: rgba(0, 0, 0, 0.9);
+    color: #ffffff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.bubble-image {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-bottom: 3px;
+    margin-top: 5px; /* Add top padding to prevent image cutoff */
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bubble-symbol {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 1px;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.bubble-change {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    margin-bottom: 5px; /* Add bottom padding to prevent text cutoff */
+    padding-bottom: 2px; /* Extra bottom padding */
+}
+
+.bubble-market-cap {
+    display: none; /* Hide market cap for cleaner look like CryptoBubbles */
+}
+
+/* Floating animations for bubbles - Multiple variations */
+@keyframes floatBubble {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+    }
+    25% {
+        transform: translateY(-8px) translateX(4px);
+    }
+    50% {
+        transform: translateY(-4px) translateX(-6px);
+    }
+    75% {
+        transform: translateY(-12px) translateX(2px);
+    }
+}
+
+@keyframes floatBubble2 {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+    }
+    33% {
+        transform: translateY(-6px) translateX(-3px);
+    }
+    66% {
+        transform: translateY(-10px) translateX(5px);
+    }
+}
+
+@keyframes floatBubble3 {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+    }
+    20% {
+        transform: translateY(-5px) translateX(2px);
+    }
+    40% {
+        transform: translateY(-8px) translateX(-4px);
+    }
+    60% {
+        transform: translateY(-3px) translateX(3px);
+    }
+    80% {
+        transform: translateY(-11px) translateX(-2px);
+    }
+}
+
+/* Bubble size classes based on market cap - More distinct size differences */
+.bubble-xl {
+    width: 170px;
+    height: 170px;
+    padding: 15px; /* More padding for larger bubbles */
+}
+
+.bubble-large {
+    width: 140px;
+    height: 140px;
+    padding: 12px;
+}
+
+.bubble-medium {
+    width: 110px;
+    height: 110px;
+    padding: 10px;
+}
+
+.bubble-small {
+    width: 85px;
+    height: 85px;
+    padding: 8px;
+}
+
+.bubble-xs {
+    width: 65px;
+    height: 65px;
+    padding: 6px; /* More distinct from small bubbles */
+}
+
+/* Adjust font sizes for different bubble sizes */
+.bubble-xl .bubble-symbol {
+    font-size: 1.1rem;
+}
+
+.bubble-xl .bubble-change {
+    font-size: 0.9rem;
+}
+
+.bubble-large .bubble-symbol {
+    font-size: 1rem;
+}
+
+.bubble-large .bubble-change {
+    font-size: 0.8rem;
+}
+
+.bubble-medium .bubble-symbol {
+    font-size: 0.9rem;
+}
+
+.bubble-medium .bubble-change {
+    font-size: 0.75rem;
+}
+
+.bubble-small .bubble-symbol {
+    font-size: 0.8rem;
+}
+
+.bubble-small .bubble-change {
+    font-size: 0.7rem;
+}
+
+.bubble-xs .bubble-symbol {
+    font-size: 0.7rem;
+}
+
+.bubble-xs .bubble-change {
+    font-size: 0.6rem;
+}
+
+/* CryptoBubbles-style glowing border effects */
+.bubble-positive {
+    border: 2px solid #00ff88;
+    box-shadow:
+        0 0 10px rgba(0, 255, 136, 0.3),
+        0 0 20px rgba(0, 255, 136, 0.1),
+        inset 0 0 10px rgba(0, 255, 136, 0.1);
+}
+
+.bubble-negative {
+    border: 2px solid #ff4757;
+    box-shadow:
+        0 0 10px rgba(255, 71, 87, 0.3),
+        0 0 20px rgba(255, 71, 87, 0.1),
+        inset 0 0 10px rgba(255, 71, 87, 0.1);
+}
+
+.bubble-neutral {
+    border: 2px solid #747d8c;
+    box-shadow:
+        0 0 10px rgba(116, 125, 140, 0.2),
+        0 0 20px rgba(116, 125, 140, 0.1),
+        inset 0 0 10px rgba(116, 125, 140, 0.1);
+}
+
+/* Intensity variations with stronger glow effects */
+.bubble-positive.intense {
+    border: 3px solid #00ff88;
+    box-shadow:
+        0 0 15px rgba(0, 255, 136, 0.5),
+        0 0 30px rgba(0, 255, 136, 0.2),
+        0 0 45px rgba(0, 255, 136, 0.1),
+        inset 0 0 15px rgba(0, 255, 136, 0.15);
+}
+
+.bubble-negative.intense {
+    border: 3px solid #ff4757;
+    box-shadow:
+        0 0 15px rgba(255, 71, 87, 0.5),
+        0 0 30px rgba(255, 71, 87, 0.2),
+        0 0 45px rgba(255, 71, 87, 0.1),
+        inset 0 0 15px rgba(255, 71, 87, 0.15);
+}
+
+.bubble-positive.mild {
+    border: 1px solid #00ff88;
+    box-shadow:
+        0 0 8px rgba(0, 255, 136, 0.2),
+        0 0 15px rgba(0, 255, 136, 0.1),
+        inset 0 0 8px rgba(0, 255, 136, 0.08);
+}
+
+.bubble-negative.mild {
+    border: 1px solid #ff4757;
+    box-shadow:
+        0 0 8px rgba(255, 71, 87, 0.2),
+        0 0 15px rgba(255, 71, 87, 0.1),
+        inset 0 0 8px rgba(255, 71, 87, 0.08);
+}
+
+/* Mobile responsiveness for bubble view */
+@media (max-width: 768px) {
+    .bubble-container {
+        height: 550px;
+        padding: 15px; /* Reduced padding for mobile but still account for ranking badges */
+    }
+
+    .bubble-rank {
+        width: 22px;
+        height: 22px;
+        font-size: 0.55rem;
+        top: -10px;
+        right: -10px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .bubble-xl {
+        width: 130px;
+        height: 130px;
+        padding: 10px;
+    }
+
+    .bubble-large {
+        width: 110px;
+        height: 110px;
+        padding: 8px;
+    }
+
+    .bubble-medium {
+        width: 90px;
+        height: 90px;
+        padding: 6px;
+    }
+
+    .bubble-small {
+        width: 70px;
+        height: 70px;
+        padding: 5px;
+    }
+
+    .bubble-xs {
+        width: 50px;
+        height: 50px;
+        padding: 4px; /* More distinct size difference */
+    }
+
+    /* Adjust bubble images for mobile */
+    .bubble-image {
+        width: 18px;
+        height: 18px;
+        margin-bottom: 2px;
+        margin-top: 4px; /* Ensure top padding on mobile */
+    }
+
+    .bubble-xs .bubble-image,
+    .bubble-small .bubble-image {
+        width: 14px;
+        height: 14px;
+        margin-top: 3px;
+    }
+
+    /* Ensure bottom padding for mobile text */
+    .bubble-change {
+        margin-bottom: 4px;
+        padding-bottom: 2px;
+    }
+
+    /* Adjust font sizes for mobile */
+    .bubble-xl .bubble-symbol {
+        font-size: 0.9rem;
+    }
+
+    .bubble-xl .bubble-change {
+        font-size: 0.7rem;
+    }
+
+    .bubble-large .bubble-symbol {
+        font-size: 0.8rem;
+    }
+
+    .bubble-large .bubble-change {
+        font-size: 0.65rem;
+    }
+
+    .bubble-medium .bubble-symbol,
+    .bubble-small .bubble-symbol {
+        font-size: 0.7rem;
+    }
+
+    .bubble-medium .bubble-change,
+    .bubble-small .bubble-change {
+        font-size: 0.6rem;
+    }
+
+    .bubble-xs .bubble-symbol {
+        font-size: 0.6rem;
+    }
+
+    .bubble-xs .bubble-change {
+        font-size: 0.5rem;
+    }
+}
+
+/* SEO Content Enhancements */
+.seo-content h2 {
+    color: #ff6b6b;
+    font-size: 1.8rem;
+    margin-top: 45px;
+    margin-bottom: 25px;
+    text-align: left;
+    font-weight: 800;
+    text-shadow: 0 2px 20px rgba(255, 107, 107, 0.5);
+    background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+    position: relative;
+    padding-bottom: 15px;
+}
+
+.seo-content h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+    border-radius: 2px;
+}
+
+.seo-content h2:first-child {
+    margin-top: 0;
+}
+
+/* Features List Styles */
+.features-list {
+    list-style: none;
+    padding: 0;
+    margin: 25px 0;
+    display: grid;
+    gap: 15px;
+}
+
+.features-list li {
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.7;
+    margin-bottom: 0;
+    padding: 15px 15px 15px 45px;
+    position: relative;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.features-list li:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(78, 205, 196, 0.2);
+    transform: translateX(5px);
+}
+
+.features-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #4ecdc4;
+    font-weight: bold;
+    font-size: 1.3rem;
+    text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+/* FAQ Section Styles */
+.faq-section {
+    margin-top: 50px;
+    padding-top: 40px;
+    border-top: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.faq-item {
+    margin-bottom: 15px;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(78, 205, 196, 0.02));
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.faq-item:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(78, 205, 196, 0.04));
+    border-color: rgba(78, 205, 196, 0.25);
+    box-shadow: 0 4px 20px rgba(78, 205, 196, 0.15);
+}
+
+.faq-item.active {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(78, 205, 196, 0.06));
+    border-color: rgba(78, 205, 196, 0.4);
+    box-shadow: 0 8px 30px rgba(78, 205, 196, 0.25);
+}
+
+.faq-question {
+    color: #4ecdc4;
+    font-size: 1.15rem;
+    margin-bottom: 0;
+    font-weight: 700;
+    text-align: left;
+    text-shadow: 0 2px 10px rgba(78, 205, 196, 0.3);
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    user-select: none;
+    transition: color 0.3s ease;
+}
+
+.faq-question:hover {
+    color: #5fddcc;
+}
+
+.faq-question-text {
+    flex: 1;
+}
+
+.faq-toggle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f9ca24;
+    min-width: 30px;
+    text-align: center;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.faq-question:hover .faq-toggle {
+    color: #ffdc5e;
+    transform: scale(1.1);
+}
+
+.faq-answer {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.8;
+    text-align: left;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.3s ease, padding-top 0.3s ease;
+    padding-top: 0;
+}
+
+.faq-item.active .faq-answer {
+    max-height: 2000px;
+    opacity: 1;
+    padding-top: 15px;
+}
+
+.faq-answer p {
+    text-align: left;
+    margin-bottom: 14px;
+    font-size: 0.95rem;
+}
+
+.faq-answer p:last-child {
+    margin-bottom: 0;
+}
+
+.faq-answer ol,
+.faq-answer ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.faq-answer ol li,
+.faq-answer ul li {
+    margin-bottom: 10px;
+    padding-left: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.75;
+    position: relative;
+}
+
+.faq-answer ul li::marker {
+    color: #4ecdc4;
+    font-size: 1.2em;
+}
+
+.faq-answer ol li::marker {
+    color: #f9ca24;
+    font-weight: bold;
+}
+
+.faq-answer strong {
+    color: #f9ca24;
+    font-weight: 700;
+}
+
+/* Mobile Responsive FAQ */
+@media (max-width: 768px) {
+    .seo-content h2 {
+        font-size: 1.4rem;
+        margin-top: 30px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+    }
+
+    .seo-content h2::after {
+        width: 50px;
+        height: 2.5px;
+    }
+
+    .features-list {
+        gap: 12px;
+    }
+
+    .features-list li {
+        font-size: 0.88rem;
+        padding: 12px 12px 12px 40px;
+    }
+
+    .features-list li::before {
+        left: 12px;
+        font-size: 1.2rem;
+    }
+
+    .faq-section {
+        margin-top: 35px;
+        padding-top: 25px;
+    }
+
+    .faq-item {
+        padding: 18px 20px;
+        margin-bottom: 12px;
+    }
+
+    .faq-item.active .faq-answer {
+        padding-top: 12px;
+    }
+
+    .faq-question {
+        font-size: 1.05rem;
+        margin-bottom: 0;
+        padding: 5px 0;
+    }
+
+    .faq-toggle {
+        font-size: 1.3rem;
+        min-width: 25px;
+    }
+
+    .faq-answer {
+        font-size: 0.88rem;
+    }
+
+    .faq-answer p {
+        font-size: 0.88rem;
+    }
+
+    .faq-answer ol,
+    .faq-answer ul {
+        padding-left: 18px;
+        margin: 12px 0;
+    }
+
+    .faq-answer ol li,
+    .faq-answer ul li {
+        margin-bottom: 8px;
+        padding-left: 8px;
     }
 }
 
