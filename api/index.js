@@ -348,10 +348,20 @@ app.get('/api/tokens', async (req, res) => {
             data = await fetchFromSolanaTracker();
             apiUsed = 'solanatracker';
         } else if (marketCapFilter === 'mid-range') {
-            if (!API_KEY) {
-                return res.status(500).json({ error: 'Primary API key required' });
+            // Use CoinGecko for mid-range and filter by market cap (3M-10M)
+            if (!COINGECKO_API_KEY) {
+                return res.status(500).json({ error: 'CoinGecko API key required' });
             }
-            data = await fetchFromBitQuery(marketCapFilter);
+            data = await fetchFromCoinGecko();
+            apiUsed = 'coingecko';
+
+            // Filter tokens by market cap range: 3M to 10M
+            if (data.data?.Solana?.TokenSupplyUpdates) {
+                data.data.Solana.TokenSupplyUpdates = data.data.Solana.TokenSupplyUpdates.filter(tokenData => {
+                    const marketCap = Number(tokenData.TokenSupplyUpdate.Marketcap);
+                    return marketCap >= 3000000 && marketCap <= 10000000;
+                });
+            }
         } else {
             if (!COINGECKO_API_KEY) {
                 return res.status(500).json({ error: 'CoinGecko API key required' });
