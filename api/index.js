@@ -217,10 +217,17 @@ async function fetchFromCoinGecko() {
     if (!response.ok) throw new Error(`Backup API error: ${response.status}`);
 
     const data = await response.json();
-    const transformedTokens = data.map((token) => ({
+    const transformedTokens = data.map((token) => {
+        // Shorten specific long token names
+        let tokenName = token.name;
+        if (token.symbol.toUpperCase() === '1-COIN-CAN-CHANGE-YOUR-LIFE') {
+            tokenName = '1-COIN';
+        }
+
+        return {
         TokenSupplyUpdate: {
             Currency: {
-                Name: token.name,
+                Name: tokenName,
                 Symbol: token.symbol.toUpperCase(),
                 MintAddress: token.platforms?.solana || `coingecko:${token.id}`,
                 Decimals: 6,
@@ -244,7 +251,8 @@ async function fetchFromCoinGecko() {
             },
             price_change_24h: token.price_change_percentage_24h || 0
         }
-    }));
+    };
+    });
 
     return { data: { Solana: { TokenSupplyUpdates: transformedTokens } } };
 }
