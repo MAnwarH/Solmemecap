@@ -218,17 +218,20 @@ async function fetchFromCoinGecko() {
 
     const data = await response.json();
     const transformedTokens = data.map((token) => {
-        // Shorten specific long token names
+        // Shorten specific long token names and symbols
         let tokenName = token.name;
-        if (token.symbol.toUpperCase() === '1-COIN-CAN-CHANGE-YOUR-LIFE') {
+        let tokenSymbol = token.symbol.toUpperCase();
+
+        if (tokenSymbol === '1-COIN-CAN-CHANGE-YOUR-LIFE') {
             tokenName = '1-COIN';
+            tokenSymbol = '1-COIN';
         }
 
         return {
         TokenSupplyUpdate: {
             Currency: {
                 Name: tokenName,
-                Symbol: token.symbol.toUpperCase(),
+                Symbol: tokenSymbol,
                 MintAddress: token.platforms?.solana || `coingecko:${token.id}`,
                 Decimals: 6,
                 Uri: null,
