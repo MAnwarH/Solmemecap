@@ -69,14 +69,15 @@ app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.static('public')); // Serve static files
 
 // 🔒 ENHANCED SECURITY: Validate API keys are present
-if (!process.env.BITQUERY_API_KEY) {
-    console.error('❌ SECURITY ERROR: BITQUERY_API_KEY not found in environment variables');
+// CoinGecko is now the primary source (All coins + mid-range), so it is required.
+if (!process.env.COINGECKO_API_KEY) {
+    console.error('❌ SECURITY ERROR: COINGECKO_API_KEY not found in environment variables');
     console.error('📝 Please create a .env file with your API keys');
     process.exit(1);
 }
 
-if (!process.env.COINGECKO_API_KEY) {
-    console.warn('⚠️ WARNING: COINGECKO_API_KEY not found - fallback API will not work');
+if (!process.env.BITQUERY_API_KEY) {
+    console.warn('⚠️ WARNING: BITQUERY_API_KEY not found - legacy BitQuery source unavailable (not used by default)');
 }
 
 if (!process.env.SOLANATRACKER_API_KEY) {
@@ -351,29 +352,53 @@ async function fetchFromSolanaTracker() {
 }
 
 // CoinGecko service functions
-async function fetchFromCoinGecko() {
+async function fetchFromCoinGecko(marketCapFilter = 'all') {
     try {
-        debugLog('🦎 Fetching tokens from CoinGecko API (Solana memecoins)...');
+        const isMiddleRange = marketCapFilter === 'mid-range';
+        debugLog(`🦎 Fetching tokens from CoinGecko API (Solana memecoins${isMiddleRange ? ', 3M-10M' : ''})...`);
         safeLog('📡 Fetching tokens from backup data source...');
 
-        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h&include_platform=true`;
+        // For mid-range we page deeper (top-by-market-cap results are all well
+        // above 10M, so the 3M-10M band sits further down the list).
+        const pagesToFetch = isMiddleRange ? [1, 2] : [1];
+        const perPage = isMiddleRange ? 250 : 100;
 
-        const response = await fetch(url, {
-            headers: {
-                'x-cg-demo-api-key': COINGECKO_API_KEY
+        let data = [];
+        for (const page of pagesToFetch) {
+            const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false&price_change_percentage=24h&include_platform=true`;
+
+            const response = await fetch(url, {
+                headers: {
+                    'x-cg-demo-api-key': COINGECKO_API_KEY
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backup API error: ${response.status} ${response.statusText}`);
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`Backup API error: ${response.status} ${response.statusText}`);
+            const pageData = await response.json();
+            data = data.concat(pageData);
+
+            // Fewer results than requested means there are no more pages.
+            if (pageData.length < perPage) break;
         }
 
-        const data = await response.json();
         debugLog(`✅ CoinGecko returned ${data.length} tokens`);
         safeLog(`✅ Backup source returned ${data.length} tokens`);
 
-        // No market cap filtering - show top 100 memecoins by CoinGecko ranking
-        const tokensToProcess = data;
+        // Mid-range: keep only 3M-10M market cap coins (top 100). Otherwise top 100 by rank.
+        let tokensToProcess = data;
+        if (isMiddleRange) {
+            const MID_MIN = 3_000_000;
+            const MID_MAX = 10_000_000;
+            tokensToProcess = data.filter(t => {
+                const mc = Number(t.market_cap) || 0;
+                return mc >= MID_MIN && mc <= MID_MAX;
+            }).slice(0, 100);
+            debugLog(`✅ Mid-range filter kept ${tokensToProcess.length} tokens (3M-10M)`);
+            safeLog(`✅ Mid-range: ${tokensToProcess.length} tokens in 3M-10M band`);
+        }
 
         debugLog(`✅ Processing all ${tokensToProcess.length} tokens from CoinGecko`);
         safeLog(`✅ Processing ${tokensToProcess.length} tokens from backup source`);
@@ -708,16 +733,17 @@ app.get('/api/tokens', async (req, res) => {
             data = await fetchFromSolanaTracker();
             apiUsed = 'solanatracker';
         }
-        // Mid-range: ALWAYS use BitQuery (no CoinGecko backup)
+        // Mid-range: use CoinGecko, filtered to 3M-10M market cap
         else if (isMiddleRange) {
-            if (!API_KEY) {
+            if (!COINGECKO_API_KEY) {
                 return res.status(500).json({
-                    error: 'Primary API key required for mid-range tokens'
+                    error: 'CoinGecko API key required for mid-range tokens'
                 });
             }
-            debugLog('🔍 Mid-range filter: Using BitQuery only');
-            safeLog('🔍 Mid-range filter: Using primary data source');
-            data = await fetchFromBitQuery(marketCapFilter);
+            debugLog('🔍 Mid-range filter: Using CoinGecko (3M-10M)');
+            safeLog('🔍 Mid-range filter: Using backup data source (3M-10M)');
+            data = await fetchFromCoinGecko(marketCapFilter);
+            apiUsed = 'coingecko';
         }
         // All coins: FORCE CoinGecko API (as per user request)
         else {
@@ -974,7 +1000,7 @@ app.get('/api/dexscreener/:address', async (req, res) => {
             symbol: token.baseToken.symbol || 'Unknown',
             name: token.baseToken.name || 'Unknown Token',
             address: address,
-            marketCap: Number(token.fdv) || 0,
+            marketCap: Number(token.marketCap) || Number(token.fdv) || 0,
             imageUrl: token.info?.imageUrl || null,
             website: token.url || `https://dexscreener.com/solana/${address}`
         };

@@ -12,17 +12,18 @@ const sponsoredCoins = [
         marketCap: 0,
         imageUrl: null,
         website: null,
+        localImage: '/image.webp', // Primary sponsored coin uses a local image
         isLoading: true
     },
     {
-        symbol: 'YOUR COIN',
-        name: 'Your coin here',
+        mintAddress: '4tWMJCW6tdpVUkwDpX1NEQURbtuQDg7H9DfkjEpGnq5D', // Fetched from DexScreener (uses its own image)
+        symbol: null,
+        name: null,
         address: null,
         marketCap: 0,
         imageUrl: null,
         website: null,
-        description: 'Advertise your coin here',
-        isPlaceholder: true
+        isLoading: true
     },
     {
         symbol: 'YOUR COIN',
@@ -108,7 +109,7 @@ const mockTokens = [
 
 
 // 🌐 FETCH SPONSORED COIN: Fetch coin data from DexScreener API via server proxy
-async function fetchSponsoredCoin(mintAddress) {
+async function fetchSponsoredCoin(mintAddress, localImage = null) {
     try {
         console.log(`🔍 Fetching sponsored coin data for: ${mintAddress}`);
         const response = await fetch(`/api/dexscreener/${mintAddress}`);
@@ -124,9 +125,12 @@ async function fetchSponsoredCoin(mintAddress) {
             return null;
         }
 
-        // Override image with local image for sponsored coin
         const coinData = result.data;
-        coinData.imageUrl = '/image.webp';
+        // Only override with a local image when one is explicitly provided
+        // (the primary sponsored coin uses /image.webp; others use their DexScreener image)
+        if (localImage) {
+            coinData.imageUrl = localImage;
+        }
 
         return coinData;
     } catch (error) {
@@ -234,7 +238,7 @@ async function populateSponsoredSection() {
 
         // If coin has mintAddress, fetch data from DexScreener
         if (coin.mintAddress && coin.isLoading) {
-            const fetchedData = await fetchSponsoredCoin(coin.mintAddress);
+            const fetchedData = await fetchSponsoredCoin(coin.mintAddress, coin.localImage);
 
             if (fetchedData) {
                 // Update the coin object with fetched data
@@ -265,7 +269,7 @@ async function populateSponsoredSection() {
     });
 }
 
-// 🔍 CHECK API AVAILABILITY: Check if BitQuery API is available and hide mid-range option if not
+// 🔍 CHECK API AVAILABILITY: Mid-range now uses CoinGecko, so gate that option on CoinGecko
 async function checkApiAvailability() {
     try {
         const response = await fetch('/api/health');
@@ -274,8 +278,8 @@ async function checkApiAvailability() {
         const dropdown = document.getElementById('market-cap-dropdown');
         const midRangeOption = dropdown.querySelector('option[value="mid-range"]');
 
-        if (!healthData.apis.bitquery && midRangeOption) {
-            // Hide mid-range option if BitQuery API is not available
+        if (!healthData.apis.coingecko && midRangeOption) {
+            // Hide mid-range option if CoinGecko API is not available
             midRangeOption.style.display = 'none';
             midRangeOption.disabled = true;
 
@@ -284,8 +288,8 @@ async function checkApiAvailability() {
                 dropdown.value = 'all';
                 currentMarketCapFilter = 'all';
             }
-        } else if (healthData.apis.bitquery && midRangeOption) {
-            // Show mid-range option if BitQuery API is available
+        } else if (healthData.apis.coingecko && midRangeOption) {
+            // Show mid-range option if CoinGecko API is available
             midRangeOption.style.display = 'block';
             midRangeOption.disabled = false;
         }
