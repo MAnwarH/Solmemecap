@@ -454,7 +454,7 @@ app.get('/api/dexscreener/:address', async (req, res) => {
             symbol: token.baseToken.symbol || 'Unknown',
             name: token.baseToken.name || 'Unknown Token',
             address: address,
-            marketCap: Number(token.fdv) || 0,
+            marketCap: Number(token.marketCap) || Number(token.fdv) || 0,
             imageUrl: token.info?.imageUrl || null,
             website: token.url || `https://dexscreener.com/solana/${address}`
         };
