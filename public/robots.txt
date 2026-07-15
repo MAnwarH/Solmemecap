@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Internal API endpoints have no crawlable content
+Disallow: /api/
+
+Sitemap: https://solmemecap.com/sitemap.xml
