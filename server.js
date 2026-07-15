@@ -361,7 +361,7 @@ async function fetchFromCoinGecko(marketCapFilter = 'all') {
         // For mid-range we page deeper (top-by-market-cap results are all well
         // above 10M, so the 3M-10M band sits further down the list).
         const pagesToFetch = isMiddleRange ? [1, 2] : [1];
-        const perPage = isMiddleRange ? 250 : 100;
+        const perPage = 250;
 
         let data = [];
         for (const page of pagesToFetch) {
@@ -387,18 +387,27 @@ async function fetchFromCoinGecko(marketCapFilter = 'all') {
         debugLog(`✅ CoinGecko returned ${data.length} tokens`);
         safeLog(`✅ Backup source returned ${data.length} tokens`);
 
-        // Mid-range: keep only 3M-10M market cap coins (top 100). Otherwise top 100 by rank.
+        // The grid reports Fully Diluted Valuation as the headline market cap.
+        // CoinGecko has no FDV sort (order=fully_diluted_valuation_desc is
+        // silently ignored), so band and rank on FDV here.
+        const capOf = t => Number(t.fully_diluted_valuation) || Number(t.market_cap) || 0;
+
         let tokensToProcess = data;
         if (isMiddleRange) {
             const MID_MIN = 3_000_000;
             const MID_MAX = 10_000_000;
             tokensToProcess = data.filter(t => {
-                const mc = Number(t.market_cap) || 0;
-                return mc >= MID_MIN && mc <= MID_MAX;
-            }).slice(0, 100);
-            debugLog(`✅ Mid-range filter kept ${tokensToProcess.length} tokens (3M-10M)`);
+                const cap = capOf(t);
+                return cap >= MID_MIN && cap <= MID_MAX;
+            });
+            debugLog(`✅ Mid-range filter kept ${tokensToProcess.length} tokens (3M-10M FDV)`);
             safeLog(`✅ Mid-range: ${tokensToProcess.length} tokens in 3M-10M band`);
         }
+
+        // Rank by FDV, then keep the top 100.
+        tokensToProcess = [...tokensToProcess]
+            .sort((a, b) => capOf(b) - capOf(a))
+            .slice(0, 100);
 
         debugLog(`✅ Processing all ${tokensToProcess.length} tokens from CoinGecko`);
         safeLog(`✅ Processing ${tokensToProcess.length} tokens from backup source`);
@@ -417,7 +426,7 @@ async function fetchFromCoinGecko(marketCapFilter = 'all') {
                     TokenStandard: 'Token',
                     ImageUrl: token.image // CoinGecko provides image URLs directly
                 },
-                Marketcap: token.market_cap.toString(),
+                Marketcap: capOf(token).toString(),
                 TotalSupply: token.total_supply || '0'
             },
             Block: {

@@ -207,17 +207,37 @@ async function fetchFromBitQuery(marketCapFilter) {
     return await response.json();
 }
 
-async function fetchFromCoinGecko() {
-    const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h&include_platform=true`;
+// The grid reports Fully Diluted Valuation as the headline market cap.
+// CoinGecko has no FDV sort (order=fully_diluted_valuation_desc is silently
+// ignored and falls back to market cap), so fetch a wider slice than we need
+// and rank by FDV here.
+const MID_RANGE_MIN = 3000000;
+const MID_RANGE_MAX = 10000000;
+const COINGECKO_PER_PAGE = 250;
 
-    const response = await fetch(url, {
-        headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY }
-    });
+async function fetchFromCoinGecko(marketCapFilter = 'all') {
+    const isMiddleRange = marketCapFilter === 'mid-range';
+    // The 3M-10M band sits well below the top of the category, so page deeper for it.
+    const pagesToFetch = isMiddleRange ? [1, 2] : [1];
 
-    if (!response.ok) throw new Error(`Backup API error: ${response.status}`);
+    let data = [];
+    for (const page of pagesToFetch) {
+        const url = `${COINGECKO_ENDPOINT}/coins/markets?vs_currency=usd&category=solana-meme-coins&order=market_cap_desc&per_page=${COINGECKO_PER_PAGE}&page=${page}&sparkline=false&price_change_percentage=24h&include_platform=true`;
 
-    const data = await response.json();
-    const transformedTokens = data.map((token) => {
+        const response = await fetch(url, {
+            headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY }
+        });
+
+        if (!response.ok) throw new Error(`Backup API error: ${response.status}`);
+
+        const pageData = await response.json();
+        data = data.concat(pageData);
+
+        // A short page means there are no more results.
+        if (pageData.length < COINGECKO_PER_PAGE) break;
+    }
+
+    let transformedTokens = data.map((token) => {
         // Shorten specific long token names and symbols
         let tokenName = token.name;
         let tokenSymbol = token.symbol.toUpperCase();
@@ -240,7 +260,7 @@ async function fetchFromCoinGecko() {
                 TokenStandard: 'Token',
                 ImageUrl: token.image
             },
-            Marketcap: token.market_cap.toString(),
+            Marketcap: (Number(token.fully_diluted_valuation) || Number(token.market_cap) || 0).toString(),
             TotalSupply: token.total_supply || '0'
         },
         Block: {
@@ -256,6 +276,19 @@ async function fetchFromCoinGecko() {
         }
     };
     });
+
+    // Band the mid-range filter on the same FDV figure the grid displays.
+    if (isMiddleRange) {
+        transformedTokens = transformedTokens.filter(tokenData => {
+            const cap = Number(tokenData.TokenSupplyUpdate.Marketcap);
+            return cap >= MID_RANGE_MIN && cap <= MID_RANGE_MAX;
+        });
+    }
+
+    // Rank by FDV, then keep the top 100.
+    transformedTokens.sort((a, b) =>
+        Number(b.TokenSupplyUpdate.Marketcap) - Number(a.TokenSupplyUpdate.Marketcap));
+    transformedTokens = transformedTokens.slice(0, 100);
 
     return { data: { Solana: { TokenSupplyUpdates: transformedTokens } } };
 }
@@ -348,25 +381,17 @@ app.get('/api/tokens', async (req, res) => {
             data = await fetchFromSolanaTracker();
             apiUsed = 'solanatracker';
         } else if (marketCapFilter === 'mid-range') {
-            // Use CoinGecko for mid-range and filter by market cap (3M-10M)
+            // CoinGecko, banded to 3M-10M FDV inside fetchFromCoinGecko
             if (!COINGECKO_API_KEY) {
                 return res.status(500).json({ error: 'CoinGecko API key required' });
             }
-            data = await fetchFromCoinGecko();
+            data = await fetchFromCoinGecko('mid-range');
             apiUsed = 'coingecko';
-
-            // Filter tokens by market cap range: 3M to 10M
-            if (data.data?.Solana?.TokenSupplyUpdates) {
-                data.data.Solana.TokenSupplyUpdates = data.data.Solana.TokenSupplyUpdates.filter(tokenData => {
-                    const marketCap = Number(tokenData.TokenSupplyUpdate.Marketcap);
-                    return marketCap >= 3000000 && marketCap <= 10000000;
-                });
-            }
         } else {
             if (!COINGECKO_API_KEY) {
                 return res.status(500).json({ error: 'CoinGecko API key required' });
             }
-            data = await fetchFromCoinGecko();
+            data = await fetchFromCoinGecko('all');
             apiUsed = 'coingecko';
         }
 
